@@ -21,7 +21,7 @@
  function snapshot(){
    if(child==='emily'){
      const key=Object.keys(localStorage).find(k=>k.includes('emily')&&k.includes('v2'));
-     return {storageKey:key||'emily-adventure-v2',raw:key?localStorage.getItem(key):null,shop:localStorage.getItem('emily-shop-v3')};
+     return {storageKey:key||'emily-adventure-v2',raw:key?localStorage.getItem(key):null,shop:localStorage.getItem('emily-shop-v4')};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
    return {answers:localStorage.getItem('jason-reading-v1'),notes};
@@ -30,7 +30,7 @@
    if(child==='emily'){
      if((data.raw!==null&&typeof data.raw!=='string')||!data.storageKey||!/^emily[-a-z0-9]+$/i.test(data.storageKey))throw Error('Invalid saved Emily progress');
      if(typeof data.raw==='string')localStorage.setItem(data.storageKey,data.raw);
-     if(typeof data.shop==='string')localStorage.setItem('emily-shop-v3',data.shop);
+     if(typeof data.shop==='string')localStorage.setItem('emily-shop-v4',data.shop);
    }else{
      if(typeof data.answers!=='string'||!data.notes||typeof data.notes!=='object')throw Error('Invalid saved Jason progress');
      localStorage.setItem('jason-reading-v1',data.answers);
@@ -94,7 +94,7 @@
        if(localRaw&&localRaw!==remoteData.raw)localStorage.setItem('emily-before-cloud-restore',localRaw);
        const changed=localRaw!==remoteData.raw;
        localStorage.setItem('emily-adventure-v2',remoteData.raw);
-       if(typeof remoteData.shop==='string'&&!localStorage.getItem('emily-shop-v3'))localStorage.setItem('emily-shop-v3',remoteData.shop);
+       if(typeof remoteData.shop==='string'&&!localStorage.getItem('emily-shop-v4'))localStorage.setItem('emily-shop-v4',remoteData.shop);
        say('🌈 '+remoteCompleted+' completed answers loaded from family cloud!');
        if(changed){location.reload();return}
        return;
@@ -115,7 +115,7 @@
      const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;
      if(cloudExists&&child==='jason')mergeJason(latest.data.data);
      if(cloudExists&&child==='emily'&&typeof latest.data.data.shop==='string'){
-       try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v3')||'{}');localStorage.setItem('emily-shop-v3',JSON.stringify({...remote,...own}))}catch(e){}
+       try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remote,...own}))}catch(e){}
      }
      const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Your adventure is safely saved!');return true;
    }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
