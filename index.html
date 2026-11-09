@@ -20,14 +20,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .hint,.feedback{padding:12px;margin-top:12px;border-radius:12px;background:#fff5d8}
 .feedback{background:#e8f6ec}.feedback.retry{background:#fff0df}
 textarea{width:100%;min-height:82px;border-radius:12px;border:2px solid #d8dfe9;padding:12px;font:inherit;font-size:17px}
-.progress{height:10px;border-radius:12px;background:#e9ecef;overflow:hidden}.fill{height:100%;background:#54ae7e;transition:width .2s}
+.roadmap{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.level{flex:1;min-width:180px;text-align:left;border:2px solid #d8dfe9;background:#fff;padding:16px}.level.active{background:#e9f6ec;border-color:#39976e}.level small{display:block;color:#596b78;margin-top:5px}.progress{height:10px;border-radius:12px;background:#e9ecef;overflow:hidden}.fill{height:100%;background:#54ae7e;transition:width .2s}
 .end{text-align:center;font-size:21px;background:#e8f6ec;padding:22px;border-radius:16px}
 footer{text-align:center;color:#667085;font-size:13px;margin-top:28px}
 @media print{body{background:white}.tabs,.actions,footer{display:none}.panel,.q{box-shadow:none;break-inside:avoid}}
 </style></head>
 <body><div style="max-width:760px;margin:14px auto 0;padding:0 16px"><a href="./jason.html" style="display:inline-block;padding:12px 18px;border-radius:14px;background:#e2ecff;color:#173b72;font-weight:700;text-decoration:none">📚 Jason's English — two reading worksheets →</a></div><main class="wrap"><header><div style="font-size:52px">🌻📚🔢</div><h1>Emily's Little Learning Adventure</h1><div class="subtitle">English + Maths • NSW Year 1 • No timer, no scores!</div></header>
 <nav class="tabs"><button class="tab active" data-tab="english">📖 English</button><button class="tab" data-tab="maths">🔢 Maths</button></nav>
-<section id="intro"></section><div class="panel"><div id="progresslabel"></div><div class="progress"><div class="fill" id="progressbar"></div></div></div>
+<section id="intro"></section><section id="roadmap" class="panel" hidden><h2>🗺️ Emily's Maths Roadmap</h2><p>Choose your adventure. You can revisit either level at any time.</p><div class="roadmap"><button type="button" class="level" data-level="1"><strong>🌱 Level 1 · Foundations</strong><small>Original 5 questions · Counting, simple addition and subtraction</small><span id="level1progress"></span></button><button type="button" class="level" data-level="2"><strong>🚀 Level 2 · Bigger Challenges</strong><small>15 new questions · Word problems, patterns, time, money and reasoning</small><span id="level2progress"></span></button></div></section><div class="panel"><div id="progresslabel"></div><div class="progress"><div class="fill" id="progressbar"></div></div></div>
 <p id="savestatus" role="status" aria-live="polite"></p>
 <div id="questions"></div><div id="finish"></div>
 <footer>Take your time. Ask for help whenever you like. Your answers stay on this device.</footer></main>
@@ -65,6 +65,7 @@ maths:[
 const persistence=AdventurePersistence.createPersistence(()=>window.localStorage,Object.values(data).flat());
 const restored=persistence.load();
 let tab=restored.tab;
+let mathsLevel=Number(sessionStorage.getItem("emily-maths-level")||1);
 const state=restored.answers;
 function showSaveStatus(result){
 const el=document.getElementById('savestatus');
@@ -76,8 +77,8 @@ function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;',
 function render(){
 document.querySelectorAll('.tab').forEach(b=>{b.classList.toggle('active',b.dataset.tab===tab);b.setAttribute('aria-pressed',b.dataset.tab===tab)});
 document.getElementById('intro').innerHTML=tab==='english'?'<div class="panel story"><div class="plant" aria-hidden="true">🌱☀️</div><h2>🌿 Mia’s Tiny Seed</h2><p>Mia planted a tiny seed in a pot. She gave it water and put it by the window. Every morning, Mia looked at the soil. After a few days, a little green shoot popped up. Mia smiled.</p></div>':'<div class="panel story"><h2>✨ Maths Adventure: Level Up!</h2><p>Start with the warm-up questions, then try the bigger challenges! Draw pictures or use scrap paper if it helps.</p></div>';
-const qs=data[tab];let done=qs.filter(q=>state[q.id]?.checked).length;
-document.getElementById('progresslabel').textContent=`${done} of ${qs.length} activities checked`;
+const roadmap=document.getElementById('roadmap');roadmap.hidden=tab!=='maths';if(tab==='maths'){for(const level of [1,2]){const subset=level===1?data.maths.slice(0,5):data.maths.slice(5);const completed=subset.filter(q=>state[q.id]?.checked).length;document.getElementById('level'+level+'progress').textContent=' · '+completed+'/'+subset.length+' completed';document.querySelector('[data-level="'+level+'"]').classList.toggle('active',mathsLevel===level);}}const qs=tab==='maths'?(mathsLevel===1?data.maths.slice(0,5):data.maths.slice(5)):data.english;let done=qs.filter(q=>state[q.id]?.checked).length;
+document.getElementById('progresslabel').textContent=`${tab==='maths'?'Level '+mathsLevel+' · ':''}${done} of ${qs.length} activities checked`;
 document.getElementById('progressbar').style.width=(100*done/qs.length)+'%';
 document.getElementById('questions').innerHTML=qs.map((q,i)=>{
 const s=state[q.id]||{}, checked=!!s.checked;
@@ -91,5 +92,5 @@ document.querySelectorAll('.hintbtn').forEach(el=>el.addEventListener('click',()
 document.querySelectorAll('.check').forEach(el=>el.addEventListener('click',()=>{let id=el.dataset.id;if(state[id]?.value===undefined||String(state[id].value).trim()==='')return;state[id].checked=true;save();render()}));
 const next=document.getElementById('next');if(next)next.addEventListener('click',()=>{tab=tab==='english'?'maths':'english';save();render();window.scrollTo({top:0,behavior:'smooth'})});
 }
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;save();render()}));render();
+document.querySelectorAll('.level').forEach(b=>b.addEventListener('click',()=>{mathsLevel=Number(b.dataset.level);try{sessionStorage.setItem('emily-maths-level',String(mathsLevel))}catch(e){}render()}));document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;save();render()}));render();
 </script></body></html>
