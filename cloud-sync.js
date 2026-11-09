@@ -49,15 +49,16 @@
    }catch(e){say('Could not load: '+e.message)}
  }
  async function save(){
-   if(!url){say('Cloud saving needs a one-time family setup. Your work is still saved on this device.');return}
+   if(!url){say('Cloud saving needs a one-time family setup. Your work is still saved on this device.');return false}
    const pin=prompt('🔐 Ask a grown-up for the family PIN to save your adventure:');
-   if(pin===null)return;
+   if(pin===null)return false;
    try{
      // Fetch latest SHA to support the first save, but never overwrite a changed cloud version silently.
-     if(!cloudExists){const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;if(cloudExists){say('An adventure already exists in the cloud. Load it before saving to avoid losing work.');return}}
-     const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;say('🌟 Your adventure is safely saved!');
-   }catch(e){say('Could not save: '+e.message)}
+     if(!cloudExists){const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;if(cloudExists){say('An adventure already exists in the cloud. Load it before saving to avoid losing work.');return false}}
+     const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;say('🌟 Your adventure is safely saved!');return true;
+   }catch(e){say('Could not save: '+e.message);return false}
  }
+ window.adventureCloudSave=save;
  panel.querySelector('[data-action="save"]').addEventListener('click',save);
  panel.querySelector('[data-action="load"]').addEventListener('click',()=>load(false));
  load(true);
