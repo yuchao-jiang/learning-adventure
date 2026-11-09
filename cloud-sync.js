@@ -9,6 +9,7 @@
  const target=document.querySelector('header');
  // Cloud controls are hidden on both learner roadmaps; automatic restore remains active.
  panel.hidden=true;
+ if(child==='emily'){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='☁️ Save My Progress';saveButton.style.cssText='margin:12px 0;padding:12px 18px;border-radius:12px;background:#d9f3e4;border:2px solid #39976e;font-weight:700';const status=document.createElement('p');status.id='emily-cloud-status';status.setAttribute('role','status');const hub=document.getElementById('hub');if(hub){hub.append(saveButton,status);saveButton.addEventListener('click',async()=>{saveButton.disabled=true;status.textContent='Saving…';const ok=await save();status.textContent=ok?'🌟 Progress saved to the family cloud!':'Cloud save did not finish. Progress remains on this device.';saveButton.disabled=false})}}
  if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';document.getElementById('jason-roadmap')?.append(indicator);const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load(true));document.getElementById('jason-roadmap')?.append(retry)}
  const message=panel.querySelector('.cloud-message');
  let sha=null,cloudExists=false;
@@ -95,7 +96,6 @@
      // Refresh remote state before writing so a second device cannot silently replace it.
      const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;
      if(cloudExists&&child==='jason')mergeJason(latest.data.data);
-     else if(cloudExists&&child==='emily'){say('A cloud save exists. Refresh this page before replacing it.');return false}
      const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Your adventure is safely saved!');return true;
    }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
