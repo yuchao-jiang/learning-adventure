@@ -21,7 +21,7 @@
  function snapshot(){
    if(child==='emily'){
      const key=Object.keys(localStorage).find(k=>k.includes('emily')&&k.includes('v2'));
-     return {storageKey:key||'emily-adventure-v2',raw:key?localStorage.getItem(key):null,shop:localStorage.getItem('emily-shop-v4')};
+     return {storageKey:key||'emily-adventure-v2',raw:key?localStorage.getItem(key):null,shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1')};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
    return {answers:localStorage.getItem('jason-reading-v1'),notes};
@@ -31,11 +31,25 @@
      if((data.raw!==null&&typeof data.raw!=='string')||!data.storageKey||!/^emily[-a-z0-9]+$/i.test(data.storageKey))throw Error('Invalid saved Emily progress');
      if(typeof data.raw==='string')localStorage.setItem(data.storageKey,data.raw);
      if(typeof data.shop==='string')localStorage.setItem('emily-shop-v4',data.shop);
+     if(typeof data.cupcake==='string')mergeCupcake(data.cupcake);
    }else{
      if(typeof data.answers!=='string'||!data.notes||typeof data.notes!=='object')throw Error('Invalid saved Jason progress');
      localStorage.setItem('jason-reading-v1',data.answers);
      for(const [k,v] of Object.entries(data.notes))if(k.startsWith('jason-reading-notes-v1-')&&typeof v==='string')localStorage.setItem(k,v);
    }
+ }
+ function mergeCupcake(remoteRaw){
+   if(typeof remoteRaw!=='string')return false;
+   let remote,local;try{remote=JSON.parse(remoteRaw);local=JSON.parse(localStorage.getItem('emily-cupcake-trial-v1')||'{}')}catch{return false}
+   if(!remote||!Array.isArray(remote.solved))return false;
+   const solved=Array.from({length:5},(_,i)=>Boolean(remote.solved[i]||local.solved?.[i]));
+   const hints=Array.from({length:5},(_,i)=>Boolean(remote.hints?.[i]||local.hints?.[i]));
+   let step=0;while(step<5&&solved[step])step++;
+   const merged={step,solved,hints};
+   const previous=JSON.stringify({step:local.step||0,solved:local.solved||[],hints:local.hints||[]});
+   const changed=previous!==JSON.stringify(merged);
+   localStorage.setItem('emily-cupcake-trial-v1',JSON.stringify(merged));
+   return changed;
  }
  async function request(method,pin,data){
    const response=await fetch(endpoint,{method,cache:'no-store',headers:{...(method==='POST'?{'Content-Type':'application/json','X-Family-Pin':pin}:{})},...(method==='POST'?{body:JSON.stringify({version:1,child,sha,data})}:{})});
@@ -80,6 +94,7 @@
        return;
      }
      const remoteData=result.data.data;
+     const cupcakeChanged=mergeCupcake(remoteData.cupcake);
      if(typeof remoteData.raw!=='string')throw Error('No saved English or Maths answers found');
      const remoteParsed=JSON.parse(remoteData.raw);
      const localRaw=localStorage.getItem('emily-adventure-v2');
@@ -96,12 +111,12 @@
        localStorage.setItem('emily-adventure-v2',remoteData.raw);
        if(typeof remoteData.shop==='string'&&!localStorage.getItem('emily-shop-v4'))localStorage.setItem('emily-shop-v4',remoteData.shop);
        say('🌈 '+remoteCompleted+' completed answers loaded from family cloud!');
-       if(changed){location.reload();return}
+       if(changed||cupcakeChanged){location.reload();return}
        return;
      }
      // Existing completed local work is never silently overwritten.
-     if(localRaw!==remoteData.raw){say('☁️ Cloud answers available ('+remoteCompleted+' completed). Existing local work has been kept.');return}
-     say('🌈 '+remoteCompleted+' completed answers ready!');
+     if(localRaw!==remoteData.raw){say('☁️ Cloud answers available ('+remoteCompleted+' completed). Existing local work has been kept.');if(cupcakeChanged)location.reload();return}
+     say('🌈 '+remoteCompleted+' completed answers ready!');if(cupcakeChanged)location.reload();
    }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message}
  }
  let initialLoad;
@@ -117,6 +132,7 @@
      if(cloudExists&&child==='emily'&&typeof latest.data.data.shop==='string'){
        try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remote,...own}))}catch(e){}
      }
+     if(cloudExists&&child==='emily'&&typeof latest.data.data.cupcake==='string')mergeCupcake(latest.data.data.cupcake);
      const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Your adventure is safely saved!');return true;
    }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
