@@ -21,7 +21,7 @@
  function snapshot(){
    if(child==='emily'){
      const key=Object.keys(localStorage).find(k=>k.includes('emily')&&k.includes('v2'));
-     return {storageKey:key||'emily-adventure-v2',raw:key?localStorage.getItem(key):null};
+     return {storageKey:key||'emily-adventure-v2',raw:key?localStorage.getItem(key):null,shop:localStorage.getItem('emily-shop-v1')};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
    return {answers:localStorage.getItem('jason-reading-v1'),notes};
@@ -30,6 +30,7 @@
    if(child==='emily'){
      if(typeof data.raw!=='string'||!data.storageKey||!/^emily[-a-z0-9]+$/i.test(data.storageKey))throw Error('Invalid saved Emily progress');
      localStorage.setItem(data.storageKey,data.raw);
+     if(typeof data.shop==='string')localStorage.setItem('emily-shop-v1',data.shop);
    }else{
      if(typeof data.answers!=='string'||!data.notes||typeof data.notes!=='object')throw Error('Invalid saved Jason progress');
      localStorage.setItem('jason-reading-v1',data.answers);
@@ -80,7 +81,10 @@
      }
      if(automatic){
        const local=snapshot();
-       if(local.raw){say('Your local progress is safe.');return}
+       if(local.raw){
+         // Shop progress is independent of English/Maths; restore it when absent locally.
+         if(!local.shop&&typeof result.data.data.shop==='string'){localStorage.setItem('emily-shop-v1',result.data.data.shop);location.reload();return}
+         say('Your local progress is safe.');return}
      }else if(!confirm('Load cloud progress? This will replace local answers.'))return;
      restore(result.data.data);
      sessionStorage.setItem('adventure-loaded-'+child,result.sha||'loaded');location.reload();
