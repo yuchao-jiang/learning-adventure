@@ -100,7 +100,7 @@
        return;
      }
      // Existing completed local work is never silently overwritten.
-     if(localRaw!==remoteData.raw){say('☁️ Cloud answers available ('+remoteCompleted+' completed). Tap Get My Saved Stars to load them.');return}
+     if(localRaw!==remoteData.raw){say('☁️ Cloud answers available ('+remoteCompleted+' completed). Existing local work has been kept.');return}
      say('🌈 '+remoteCompleted+' completed answers ready!');
    }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message}
  }
