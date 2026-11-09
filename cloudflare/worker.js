@@ -26,7 +26,7 @@ export default {async fetch(request,env){
  if(read.ok){current=await read.json()}else if(read.status!==404){return reply({error:'Unable to read saved progress'},502)}
  if(request.method==='GET'){
    if(!current)return reply({exists:false,data:null});
-   try{const raw=Uint8Array.from(atob(current.content.replace(/\\s/g,'')),c=>c.charCodeAt(0));return reply({exists:true,data:JSON.parse(new TextDecoder().decode(raw)),sha:current.sha})}catch{return reply({error:'Invalid saved progress'},502)}
+   try{const raw=Uint8Array.from(atob(current.content.replace(/\s/g,'')),c=>c.charCodeAt(0));return reply({exists:true,data:JSON.parse(new TextDecoder().decode(raw)),sha:current.sha})}catch{return reply({error:'Invalid saved progress'},502)}
  }
  let payload;
  try{const raw=await request.text();if(raw.length>100000)return reply({error:'Save too large'},413);payload=JSON.parse(raw)}catch{return reply({error:'Invalid JSON'},400)}
