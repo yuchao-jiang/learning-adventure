@@ -7,6 +7,7 @@
  const panel=document.createElement('section');panel.className='cloud-controls';
  panel.innerHTML='<strong>☁️ My Adventure</strong><div class="cloud-buttons"><button type="button" data-action="save">☁️ Save My Adventure</button><button type="button" data-action="load">🌈 Continue My Adventure</button></div><p class="cloud-message" role="status" aria-live="polite"></p>';
  const target=document.querySelector('header');target.insertAdjacentElement('afterend',panel);
+ if(child==='jason')panel.querySelector('[data-action="save"]').remove();
  const message=panel.querySelector('.cloud-message');
  let sha=null,cloudExists=false;
  const say=t=>message.textContent=t;
