@@ -79,17 +79,33 @@
        if(changed){sessionStorage.setItem('adventure-loaded-'+child,result.sha||'loaded');location.reload()}
        return;
      }
-     if(automatic){
-       const local=snapshot();
-       if(local.raw){
-         // Shop progress is independent of English/Maths; restore it when absent locally.
-         if(typeof result.data.data.shop==='string'){
-           try{const remote=JSON.parse(result.data.data.shop),own=JSON.parse(local.shop||'{}');const merged={...own,...remote};if(JSON.stringify(merged)!==JSON.stringify(own)){localStorage.setItem('emily-shop-v1',JSON.stringify(merged));location.reload();return}}catch(e){}
-         }
-         say('Your local progress is safe.');return}
-     }else if(!confirm('Load cloud progress? This will replace local answers.'))return;
-     restore(result.data.data);
-     sessionStorage.setItem('adventure-loaded-'+child,result.sha||'loaded');location.reload();
+     const remoteData=result.data.data;
+     const local=snapshot();
+     let remoteAnswers={},localAnswers={};
+     try{
+       remoteAnswers=JSON.parse(remoteData.raw||'{}').answers||{};
+       localAnswers=JSON.parse(local.raw||'{}').answers||{};
+     }catch(e){throw Error('Unable to read Emily progress')}
+     // Keep completed answers from either device. Cloud wins only where both have
+     // completed the same question; uncompleted local answers remain intact.
+     const combined={...localAnswers,...remoteAnswers};
+     for(const [id,answer] of Object.entries(remoteAnswers)){
+       if(localAnswers[id]?.checked===true&&answer?.checked!==true)combined[id]=localAnswers[id];
+     }
+     const localParsed=JSON.parse(local.raw||'{"version":2,"tab":"english","answers":{}}');
+     const mergedRaw=JSON.stringify({...localParsed,version:2,answers:combined});
+     let remoteShop={},localShop={};
+     try{remoteShop=JSON.parse(remoteData.shop||'{}');localShop=JSON.parse(local.shop||'{}')}catch(e){}
+     const mergedShop={...localShop,...remoteShop};
+     const changed=JSON.stringify(localAnswers)!==JSON.stringify(combined)||JSON.stringify(localShop)!==JSON.stringify(mergedShop);
+     if(changed){
+       localStorage.setItem('emily-adventure-v2',mergedRaw);
+       localStorage.setItem('emily-shop-v1',JSON.stringify(mergedShop));
+       say('🌈 Saved progress restored!');
+       location.reload();
+       return;
+     }
+     say('🌈 Your saved answers are ready!');
    }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message}
  }
  let initialLoad;
