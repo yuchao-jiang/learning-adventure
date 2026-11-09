@@ -9,7 +9,7 @@
  const target=document.querySelector('header');
  // Cloud controls are hidden on both learner roadmaps; automatic restore remains active.
  panel.hidden=true;
- if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';document.getElementById('jason-roadmap')?.append(indicator)}
+ if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';document.getElementById('jason-roadmap')?.append(indicator);const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load(true));document.getElementById('jason-roadmap')?.append(retry)}
  const message=panel.querySelector('.cloud-message');
  let sha=null,cloudExists=false;
  const pinKey='adventure-family-pin-session';
@@ -44,7 +44,7 @@
    let remote={},local={};
    try{remote=JSON.parse(cloudData.answers||'{}');local=JSON.parse(localStorage.getItem('jason-reading-v1')||'{}')}catch{throw Error('Invalid saved answers')}
    // Cloud-submitted work is authoritative; never unlock or overwrite a submitted set.
-   const merged={...remote,...local};
+   const merged={...local,...remote};
    const submitted={...(local._submitted||{}),...(remote._submitted||{})};
    merged._submitted=submitted;
    for(const set of [1,2]){
@@ -59,7 +59,7 @@
    }
    merged._history=history;
    const raw=JSON.stringify(merged);
-   const changed=raw!==JSON.stringify(local);
+   const changed=Object.keys(remote).some(k=>JSON.stringify(local[k])!==JSON.stringify(merged[k]));
    localStorage.setItem('jason-reading-v1',raw);
    for(const [k,v] of Object.entries(cloudData.notes||{})){
      if(k.startsWith('jason-reading-notes-v1-')&&typeof v==='string'&&!localStorage.getItem(k))localStorage.setItem(k,v);
