@@ -1,2 +1,2 @@
-// After deploying the Cloudflare Worker, paste its HTTPS URL between the quotes.
-window.ADVENTURE_SYNC_URL = '';
+// Cloudflare Worker endpoint. Credentials remain in Cloudflare secrets, never here.
+window.ADVENTURE_SYNC_URL = 'https://learning-adventure-sync.jiang-yuchao0.workers.dev';
