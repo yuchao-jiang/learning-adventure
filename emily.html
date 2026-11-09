@@ -136,4 +136,4 @@ document.getElementById('shop-back').onclick=()=>{document.getElementById('shop-
 document.getElementById('shop-save').onclick=async()=>{const b=document.getElementById('shop-save'),st=document.getElementById('shop-save-status');b.disabled=true;st.textContent='Saving…';const ok=typeof window.adventureCloudSave==='function'&&await window.adventureCloudSave();st.textContent=ok?'🎉 Your stars and answers are safe!':'Could not save to cloud. Your stars are safe on this device.';b.disabled=false};
 shopRender();
 
-</script><script src="./cloud-config.js"></script><script src="./cloud-sync.js?v=23"></script></body></html>
+</script><script src="./cloud-config.js"></script><script src="./cloud-sync.js?v=25"></script></body></html>
