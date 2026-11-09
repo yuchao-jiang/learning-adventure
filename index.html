@@ -28,8 +28,10 @@ footer{text-align:center;color:#667085;font-size:13px;margin-top:28px}
 <body><main class="wrap"><header><div style="font-size:52px">🌻📚🔢</div><h1>Emily's Little Learning Adventure</h1><div class="subtitle">English + Maths • NSW Year 1 • No timer, no scores!</div></header>
 <nav class="tabs"><button class="tab active" data-tab="english">📖 English</button><button class="tab" data-tab="maths">🔢 Maths</button></nav>
 <section id="intro"></section><div class="panel"><div id="progresslabel"></div><div class="progress"><div class="fill" id="progressbar"></div></div></div>
+<p id="savestatus" role="status" aria-live="polite"></p>
 <div id="questions"></div><div id="finish"></div>
 <footer>Take your time. Ask for help whenever you like. Your answers stay on this device.</footer></main>
+<script src="persistence.js"></script>
 <script>
 const data={
 english:[
@@ -45,9 +47,16 @@ maths:[
 {id:'m4',q:'Which number is bigger?',choices:['14','17','They are equal'],correct:1,hint:'Which number comes later when counting?',why:'17 is bigger than 14.'},
 {id:'m5',q:'A pencil costs 5 cents. A sticker costs 3 cents. How much altogether?',choices:['7 cents','8 cents','9 cents'],correct:1,hint:'Add 5 and 3.',why:'5 + 3 = 8 cents.'}]
 };
-let tab='english';
-const state={};try{Object.assign(state,JSON.parse(localStorage.getItem('emily-adventure-v1')||'{}'))}catch(e){}
-function save(){try{localStorage.setItem('emily-adventure-v1',JSON.stringify(state))}catch(e){}}
+const persistence=AdventurePersistence.createPersistence(()=>window.localStorage,Object.values(data).flat());
+const restored=persistence.load();
+let tab=restored.tab;
+const state=restored.answers;
+function showSaveStatus(result){
+const el=document.getElementById('savestatus');
+el.textContent=result.ok?'Progress saved on this device.':result.reason==='invalid'?'Saved progress could not be read. Your next answer will start a new save.':'Progress is only kept while this page is open. This browser could not save it.';
+}
+function save(){showSaveStatus(persistence.save(state,tab))}
+showSaveStatus(restored);
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function render(){
 document.querySelectorAll('.tab').forEach(b=>{b.classList.toggle('active',b.dataset.tab===tab);b.setAttribute('aria-pressed',b.dataset.tab===tab)});
@@ -65,7 +74,7 @@ document.querySelectorAll('.choices input').forEach(el=>el.addEventListener('cha
 document.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',()=>{let id=el.id.slice(4);state[id]={...state[id],value:el.value};save();let b=el.closest('.q').querySelector('.check');if(b)b.disabled=!el.value.trim()}));
 document.querySelectorAll('.hintbtn').forEach(el=>el.addEventListener('click',()=>{let id=el.dataset.id;state[id]={...state[id],hint:!state[id]?.hint};save();let h=document.getElementById('hint-'+id);h.hidden=!state[id].hint}));
 document.querySelectorAll('.check').forEach(el=>el.addEventListener('click',()=>{let id=el.dataset.id;if(state[id]?.value===undefined||String(state[id].value).trim()==='')return;state[id].checked=true;save();render()}));
-const next=document.getElementById('next');if(next)next.addEventListener('click',()=>{tab=tab==='english'?'maths':'english';render();window.scrollTo({top:0,behavior:'smooth'})});
+const next=document.getElementById('next');if(next)next.addEventListener('click',()=>{tab=tab==='english'?'maths':'english';save();render();window.scrollTo({top:0,behavior:'smooth'})});
 }
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;render()}));render();
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;save();render()}));render();
 </script></body></html>
