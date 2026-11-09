@@ -1,7 +1,7 @@
 // Cloud sync is enabled after cloud-config.js defines window.ADVENTURE_SYNC_URL.
 // Local device progress remains available independently of the cloud.
 (function(){
- const url=String(window.ADVENTURE_SYNC_URL||'').replace(/\\/$/,'');
+ const url=String(window.ADVENTURE_SYNC_URL||'').replace(/[/]$/,'');
  const child=document.body.dataset.learner;
  if(!['emily','jason'].includes(child))return;
  const panel=document.createElement('section');panel.className='cloud-controls';
