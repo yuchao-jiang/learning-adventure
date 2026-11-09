@@ -42,11 +42,16 @@
      const result=await request('GET');sha=result.sha||null;cloudExists=!!result.exists;
      if(!result.exists){say('No cloud adventure saved yet. Use Save My Adventure first.');return}
      if(automatic){
+       // Only auto-restore if no local work exists. Never silently overwrite unsynced answers.
        const local=snapshot();
        const hasLocal=child==='emily'?!!local.raw:!!local.answers&&local.answers!=='{}';
-       if(hasLocal){say('Cloud adventure available! Tap Continue My Adventure to load it.');return}
+       if(hasLocal){
+         const same=JSON.stringify(local)===JSON.stringify(result.data.data);
+         if(same){say('🌈 Your adventure is ready!');return}
+         say('☁️ Cloud progress found. Tap Continue My Adventure to switch to it; your local work is kept safe.');return;
+       }
      }else if(!confirm('Continue with the cloud adventure? This will replace answers saved on this device.'))return;
-     restore(result.data.data);say('🌈 Adventure loaded! Opening your saved work…');setTimeout(()=>location.reload(),600);
+     restore(result.data.data);say('🌈 Adventure loaded! Opening your saved work…');sessionStorage.setItem('adventure-loaded-'+child,result.sha||'loaded');setTimeout(()=>location.reload(),600);
    }catch(e){say('Could not load: '+e.message)}
  }
  async function save(){
@@ -62,5 +67,5 @@
  window.adventureCloudSave=save;
  panel.querySelector('[data-action="save"]').addEventListener('click',save);
  panel.querySelector('[data-action="load"]').addEventListener('click',()=>load(false));
- load(true);
+ if(!sessionStorage.getItem('adventure-loaded-'+child))load(true);else {sessionStorage.removeItem('adventure-loaded-'+child);say('🌈 Your adventure is ready!')}
 })();
