@@ -113,4 +113,4 @@ document.querySelectorAll('.check').forEach(el=>el.addEventListener('click',()=>
 const next=document.getElementById('next');if(next)next.addEventListener('click',()=>{tab=tab==='english'?'maths':'english';save();render();window.scrollTo({top:0,behavior:'smooth'})});
 }
 document.getElementById('hub-back').addEventListener('click',()=>{hubOpen=false;render();window.scrollTo({top:0,behavior:'smooth'})});document.querySelectorAll('[data-english-level]').forEach(b=>b.addEventListener('click',()=>{englishLevel=Number(b.dataset.englishLevel);try{sessionStorage.setItem('emily-english-level',String(englishLevel))}catch(e){}render()}));document.querySelectorAll('.level').forEach(b=>b.addEventListener('click',()=>{mathsLevel=Number(b.dataset.level);try{sessionStorage.setItem('emily-maths-level',String(mathsLevel))}catch(e){}render()}));document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;save();render()}));render();
-</script><script src="./cloud-config.js"></script><script src="./cloud-sync.js"></script></body></html>
+</script><script src="./cloud-config.js"></script><script src="./cloud-sync.js?v=3"></script></body></html>
