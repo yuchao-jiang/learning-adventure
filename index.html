@@ -27,7 +27,7 @@ footer{text-align:center;color:#667085;font-size:13px;margin-top:28px}
 </style></head>
 <body><div style="max-width:760px;margin:14px auto 0;padding:0 16px"><a href="./jason.html" style="display:inline-block;padding:12px 18px;border-radius:14px;background:#e2ecff;color:#173b72;font-weight:700;text-decoration:none">📚 Jason's English — two reading worksheets →</a></div><main class="wrap"><header><div style="font-size:52px">🌻📚🔢</div><h1>Emily's Little Learning Adventure</h1><div class="subtitle">English + Maths • NSW Year 1 • No timer, no scores!</div></header>
 <nav class="tabs"><button class="tab active" data-tab="english">📖 English</button><button class="tab" data-tab="maths">🔢 Maths</button></nav>
-<section id="intro"></section><section id="roadmap" class="panel" hidden><h2>🗺️ Emily's Maths Roadmap</h2><p>Choose your adventure. You can revisit either level at any time.</p><div class="roadmap"><button type="button" class="level" data-level="1"><strong>🌱 Level 1 · Foundations</strong><small>Original 5 questions · Counting, simple addition and subtraction</small><span id="level1progress"></span></button><button type="button" class="level" data-level="2"><strong>🚀 Level 2 · Bigger Challenges</strong><small>15 new questions · Word problems, patterns, time, money and reasoning</small><span id="level2progress"></span></button></div></section><div class="panel"><div id="progresslabel"></div><div class="progress"><div class="fill" id="progressbar"></div></div></div>
+<section id="intro"></section><section id="roadmap" class="panel" hidden><h2>🗺️ Emily's Maths Roadmap</h2><p>Choose your adventure. You can revisit either level at any time.</p><div class="roadmap"><button type="button" class="level" data-level="1"><strong>🌱 Level 1 · Foundations</strong><small>Original 5 questions · Counting, simple addition and subtraction</small><span id="level1progress"></span></button><button type="button" class="level" data-level="2"><strong>🚀 Level 2 · Growing Skills</strong><small>15 gentle challenges · Numbers to 50, patterns, simple word problems and money</small><span id="level2progress"></span></button></div></section><div class="panel"><div id="progresslabel"></div><div class="progress"><div class="fill" id="progressbar"></div></div></div>
 <p id="savestatus" role="status" aria-live="polite"></p>
 <div id="questions"></div><div id="finish"></div>
 <footer>Take your time. Ask for help whenever you like. Your answers stay on this device.</footer></main>
@@ -46,21 +46,21 @@ maths:[
 {id:'m3',q:'What comes next? 2, 4, 6, 8, ...',choices:['9','10','12'],correct:1,hint:'Each number grows by 2.',why:'8 + 2 = 10.'},
 {id:'m4',q:'Which number is bigger?',choices:['14','17','They are equal'],correct:1,hint:'Which number comes later when counting?',why:'17 is bigger than 14.'},
 {id:'m5',q:'A pencil costs 5 cents. A sticker costs 3 cents. How much altogether?',choices:['7 cents','8 cents','9 cents'],correct:1,hint:'Add 5 and 3.',why:'5 + 3 = 8 cents.'},
-{"id":"m6","q":"18 + 7 = ?","choices":["24","25","26"],"correct":1,"hint":"Make 20 first: 18 + 2 + 5.","why":"18 + 7 = 25."},
-{"id":"m7","q":"32 − 9 = ?","choices":["21","23","24"],"correct":1,"hint":"Subtract 10, then add 1 back.","why":"32 − 9 = 23."},
-{"id":"m8","q":"What number is 10 more than 47?","choices":["48","57","67"],"correct":1,"hint":"The tens digit grows by one.","why":"47 + 10 = 57."},
-{"id":"m9","q":"What comes next? 5, 10, 15, 20, ...","choices":["25","30","21"],"correct":0,"hint":"Count in fives.","why":"The pattern increases by 5, so 25 comes next."},
-{"id":"m10","q":"Lily has 14 stickers. She gives 6 away, then gets 5 more. How many now?","choices":["11","13","25"],"correct":1,"hint":"Do the subtraction first, then addition.","why":"14 − 6 + 5 = 13."},
-{"id":"m11","q":"There are 4 bags with 3 marbles in each bag. How many marbles altogether?","choices":["7","12","14"],"correct":1,"hint":"Try 3 + 3 + 3 + 3.","why":"Four groups of 3 make 12."},
-{"id":"m12","q":"Which number has 6 tens and 4 ones?","choices":["46","64","604"],"correct":1,"hint":"Six tens are 60.","why":"60 + 4 = 64."},
-{"id":"m13","q":"A movie starts at 2:15 and lasts 30 minutes. When does it end?","choices":["2:30","2:45","3:15"],"correct":1,"hint":"Add half an hour.","why":"2:15 plus 30 minutes is 2:45."},
-{"id":"m14","q":"You have $1.00. You buy something for 65 cents. How much change?","choices":["25 cents","35 cents","45 cents"],"correct":1,"hint":"100 cents − 65 cents.","why":"The change is 35 cents."},
-{"id":"m15","q":"A rectangle has 4 sides. Two sides are 8 cm and two are 3 cm. What is its perimeter?","choices":["11 cm","22 cm","24 cm"],"correct":1,"hint":"Add all four sides.","why":"8 + 3 + 8 + 3 = 22 cm."},
-{"id":"m16","q":"A number is greater than 35 but less than 42. It is even and its digits add to 11. Which is it?","choices":["36","38","40"],"correct":1,"hint":"Check both clues: even and digits add to 11.","why":"38 is even, and 3 + 8 = 11."},
-{"id":"m17","q":"Sam reads 8 pages on Monday and twice as many on Tuesday. How many pages altogether?","choices":["16","24","32"],"correct":1,"hint":"Tuesday: 8 + 8. Then add Monday.","why":"8 + 16 = 24 pages."},
-{"id":"m18","q":"What is the missing number? 9 + □ = 24","choices":["13","15","17"],"correct":1,"hint":"Think 24 − 9.","why":"The missing number is 15."},
-{"id":"m19","q":"Three children share 18 grapes equally. How many grapes does each child get?","choices":["5","6","9"],"correct":1,"hint":"Make 3 equal groups.","why":"18 shared into 3 groups gives 6 each."},
-{"id":"m20","q":"A bus has 27 people. 8 get off and 12 get on. How many are on the bus?","choices":["29","31","47"],"correct":1,"hint":"First subtract 8, then add 12.","why":"27 − 8 + 12 = 31."}]
+{"id":"m6","q":"9 + 5 = ?","choices":["13","14","15"],"correct":1,"hint":"Start at 9 and count five more.","why":"9 + 5 = 14."},
+{"id":"m7","q":"16 − 7 = ?","choices":["8","9","10"],"correct":1,"hint":"Count back seven from 16.","why":"16 − 7 = 9."},
+{"id":"m8","q":"What number is 10 more than 23?","choices":["24","33","43"],"correct":1,"hint":"Add one ten.","why":"23 + 10 = 33."},
+{"id":"m9","q":"What comes next? 3, 6, 9, 12, ...","choices":["13","15","18"],"correct":1,"hint":"Add 3 each time.","why":"12 + 3 = 15."},
+{"id":"m10","q":"Lily has 10 stickers. She gives 3 away, then gets 2 more. How many now?","choices":["7","9","12"],"correct":1,"hint":"First 10 − 3, then add 2.","why":"10 − 3 + 2 = 9."},
+{"id":"m11","q":"There are 3 bags with 2 marbles in each. How many marbles altogether?","choices":["5","6","8"],"correct":1,"hint":"Count 2 + 2 + 2.","why":"Three groups of 2 make 6."},
+{"id":"m12","q":"Which number has 3 tens and 5 ones?","choices":["53","35","305"],"correct":1,"hint":"Three tens are 30.","why":"30 + 5 = 35."},
+{"id":"m13","q":"A game starts at 2:00 and lasts 30 minutes. When does it end?","choices":["2:15","2:30","3:00"],"correct":1,"hint":"Half an hour is 30 minutes.","why":"2:00 plus 30 minutes is 2:30."},
+{"id":"m14","q":"You have 50 cents and spend 20 cents. How much is left?","choices":["20 cents","30 cents","40 cents"],"correct":1,"hint":"Take away two tens from five tens.","why":"50 − 20 = 30 cents."},
+{"id":"m15","q":"A square has four sides of 3 cm each. What is the distance all around?","choices":["7 cm","12 cm","9 cm"],"correct":1,"hint":"Add 3 four times.","why":"3 + 3 + 3 + 3 = 12 cm."},
+{"id":"m16","q":"Which number is even and greater than 20 but less than 25?","choices":["21","22","25"],"correct":1,"hint":"Even numbers can be split into pairs.","why":"22 is even and lies between 20 and 25."},
+{"id":"m17","q":"Sam reads 5 pages on Monday and 8 on Tuesday. How many altogether?","choices":["12","13","14"],"correct":1,"hint":"Add 5 and 8.","why":"5 + 8 = 13."},
+{"id":"m18","q":"What is the missing number? 7 + □ = 15","choices":["6","8","9"],"correct":1,"hint":"Think 15 − 7.","why":"The missing number is 8."},
+{"id":"m19","q":"Two children share 10 grapes equally. How many each?","choices":["4","5","6"],"correct":1,"hint":"Make two equal groups.","why":"10 shared equally between 2 is 5."},
+{"id":"m20","q":"A bus has 12 people. 4 get off and 3 get on. How many now?","choices":["9","11","15"],"correct":1,"hint":"First subtract 4, then add 3.","why":"12 − 4 + 3 = 11."}]
 };
 const persistence=AdventurePersistence.createPersistence(()=>window.localStorage,Object.values(data).flat());
 const restored=persistence.load();
@@ -76,7 +76,7 @@ showSaveStatus(restored);
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function render(){
 document.querySelectorAll('.tab').forEach(b=>{b.classList.toggle('active',b.dataset.tab===tab);b.setAttribute('aria-pressed',b.dataset.tab===tab)});
-document.getElementById('intro').innerHTML=tab==='english'?'<div class="panel story"><div class="plant" aria-hidden="true">🌱☀️</div><h2>🌿 Mia’s Tiny Seed</h2><p>Mia planted a tiny seed in a pot. She gave it water and put it by the window. Every morning, Mia looked at the soil. After a few days, a little green shoot popped up. Mia smiled.</p></div>':'<div class="panel story"><h2>✨ Maths Adventure: Level Up!</h2><p>Start with the warm-up questions, then try the bigger challenges! Draw pictures or use scrap paper if it helps.</p></div>';
+document.getElementById('intro').innerHTML=tab==='english'?'<div class="panel story"><div class="plant" aria-hidden="true">🌱☀️</div><h2>🌿 Mia’s Tiny Seed</h2><p>Mia planted a tiny seed in a pot. She gave it water and put it by the window. Every morning, Mia looked at the soil. After a few days, a little green shoot popped up. Mia smiled.</p></div>':'<div class="panel story"><h2>✨ Maths Adventure: Keep Growing!</h2><p>Start with the warm-up questions, then try the bigger challenges! Draw pictures or use scrap paper if it helps.</p></div>';
 const roadmap=document.getElementById('roadmap');roadmap.hidden=tab!=='maths';if(tab==='maths'){for(const level of [1,2]){const subset=level===1?data.maths.slice(0,5):data.maths.slice(5);const completed=subset.filter(q=>state[q.id]?.checked).length;document.getElementById('level'+level+'progress').textContent=' · '+completed+'/'+subset.length+' completed';document.querySelector('[data-level="'+level+'"]').classList.toggle('active',mathsLevel===level);}}const qs=tab==='maths'?(mathsLevel===1?data.maths.slice(0,5):data.maths.slice(5)):data.english;let done=qs.filter(q=>state[q.id]?.checked).length;
 document.getElementById('progresslabel').textContent=`${tab==='maths'?'Level '+mathsLevel+' · ':''}${done} of ${qs.length} activities checked`;
 document.getElementById('progressbar').style.width=(100*done/qs.length)+'%';
