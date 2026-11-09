@@ -28,8 +28,8 @@
  }
  function restore(data){
    if(child==='emily'){
-     if(typeof data.raw!=='string'||!data.storageKey||!/^emily[-a-z0-9]+$/i.test(data.storageKey))throw Error('Invalid saved Emily progress');
-     localStorage.setItem(data.storageKey,data.raw);
+     if((data.raw!==null&&typeof data.raw!=='string')||!data.storageKey||!/^emily[-a-z0-9]+$/i.test(data.storageKey))throw Error('Invalid saved Emily progress');
+     if(typeof data.raw==='string')localStorage.setItem(data.storageKey,data.raw);
      if(typeof data.shop==='string')localStorage.setItem('emily-shop-v1',data.shop);
    }else{
      if(typeof data.answers!=='string'||!data.notes||typeof data.notes!=='object')throw Error('Invalid saved Jason progress');
@@ -83,7 +83,9 @@
        const local=snapshot();
        if(local.raw){
          // Shop progress is independent of English/Maths; restore it when absent locally.
-         if(!local.shop&&typeof result.data.data.shop==='string'){localStorage.setItem('emily-shop-v1',result.data.data.shop);location.reload();return}
+         if(typeof result.data.data.shop==='string'){
+           try{const remote=JSON.parse(result.data.data.shop),own=JSON.parse(local.shop||'{}');const merged={...own,...remote};if(JSON.stringify(merged)!==JSON.stringify(own)){localStorage.setItem('emily-shop-v1',JSON.stringify(merged));location.reload();return}}catch(e){}
+         }
          say('Your local progress is safe.');return}
      }else if(!confirm('Load cloud progress? This will replace local answers.'))return;
      restore(result.data.data);
@@ -100,6 +102,9 @@
      // Refresh remote state before writing so a second device cannot silently replace it.
      const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;
      if(cloudExists&&child==='jason')mergeJason(latest.data.data);
+     if(cloudExists&&child==='emily'&&typeof latest.data.data.shop==='string'){
+       try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v1')||'{}');localStorage.setItem('emily-shop-v1',JSON.stringify({...remote,...own}))}catch(e){}
+     }
      const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Your adventure is safely saved!');return true;
    }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
