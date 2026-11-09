@@ -116,11 +116,11 @@ document.getElementById('emily-set-cloud-save').addEventListener('click',async()
 
 
 const shopLevels=[
- [{q:'Mia arrives at Emily’s shop and asks for a red apple. Which word describes the apple?',opts:['Red','Apple','Asks'],a:0},{q:'Mia buys an apple for $2 and a banana for $1. How much does she pay altogether?',opts:['$2','$3','$4'],a:1},{q:'Emily has three baskets: one holds apples, one holds bananas, and one holds pears. A yellow fruit is in the middle basket. Which fruit is it?',opts:['Apples','Bananas','Pears'],a:1}],
- [{q:'Noah says, “I would like two oranges, please.” Which word tells us how many oranges he wants?',opts:['Like','Two','Please'],a:1},{q:'Each orange costs $2. If Noah buys two oranges, how much does he pay?',opts:['$2','$4','$6'],a:1},{q:'Emily puts a toy car between a teddy bear and a puzzle. The teddy bear is on the left. Which item is on the right?',opts:['The toy car','The teddy bear','The puzzle'],a:2}],
- [{q:'Sophie writes a sign for Emily’s shop. Which sentence uses a question mark correctly?',opts:['How much is the book?','The book costs five dollars?','What a lovely book?'],a:0},{q:'Sophie buys a book for $7 and pays with a $10 note. How much change should Emily give her?',opts:['$2','$3','$4'],a:1},{q:'Three friends arrive at the shop. Ava is before Ben, and Ben is before Chloe. Who is second in the queue?',opts:['Ava','Ben','Chloe'],a:1}]
+ [{q:'At the market, Emily sees a sign that says, “Fresh pears are sweeter than our green apples.” Which statement is supported by the sign?',opts:['The pears are sweeter than the green apples.','The green apples are sweeter than the pears.','The pears and apples taste exactly the same.'],a:0},{q:'Mia buys two bananas for $2 each and an apple for $3. How much does she spend altogether?',opts:['$5','$7','$9'],a:1},{q:'Emily places four fruit baskets in a row. The pears are immediately after the apples, and the bananas are immediately before the apples. Which basket must come before the pears?',opts:['The banana basket','The apple basket','The orange basket'],a:1}],
+ [{q:'A customer says, “Although the strawberries looked ripe, I chose the blueberries instead.” What did the customer buy?',opts:['Strawberries','Both kinds of berries','Blueberries'],a:2},{q:'Noah has $10. He buys a toy for $4 and a sticker for $2. How much money does he have left?',opts:['$3','$4','$6'],a:1},{q:'Emily packs three parcels. The red parcel is heavier than the blue parcel, and the blue parcel is heavier than the yellow parcel. Which parcel is the lightest?',opts:['The red parcel','The blue parcel','The yellow parcel'],a:2}],
+ [{q:'Emily writes, “The shop was busy, so I asked my brother to help.” Why did Emily ask her brother for help?',opts:['Because the shop was busy.','Because her brother wanted to buy something.','Because the shop had closed.'],a:0},{q:'A customer buys three notebooks for $3 each. She pays with a $20 note. How much change should Emily give her?',opts:['$9','$11','$13'],a:1},{q:'Four customers line up. Ben is first. Ava stands directly behind Ben. Chloe is behind Ava but ahead of Dan. Who is third in line?',opts:['Ava','Chloe','Dan'],a:1}]
 ];
-const shopKey='emily-shop-v2';
+const shopKey='emily-shop-v3';
 let shopState={};try{shopState=JSON.parse(localStorage.getItem(shopKey)||'{}')}catch{}
 let shopLevel=0;
 function shopPersist(){localStorage.setItem(shopKey,JSON.stringify(shopState))}
@@ -135,4 +135,4 @@ document.getElementById('shop-open').onclick=()=>{document.getElementById('hub')
 document.getElementById('shop-back').onclick=()=>{document.getElementById('shop-view').hidden=true;hubOpen=false;render()};
 document.getElementById('shop-save').onclick=async()=>{const b=document.getElementById('shop-save'),st=document.getElementById('shop-save-status');b.disabled=true;st.textContent='Saving…';const ok=typeof window.adventureCloudSave==='function'&&await window.adventureCloudSave();st.textContent=ok?'🎉 Your stars and answers are safe!':'Could not save to cloud. Your stars are safe on this device.';b.disabled=false};
 shopRender();
-</script><script src="./cloud-config.js"></script><script src="./cloud-sync.js?v=34"></script></body></html>
+</script><script src="./cloud-config.js"></script><script src="./cloud-sync.js?v=35"></script></body></html>
