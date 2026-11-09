@@ -9,7 +9,7 @@
  const target=document.querySelector('header');
  // Cloud controls are hidden on both learner roadmaps; automatic restore remains active.
  panel.hidden=true;
- if(child==='emily'){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='🌟 Keep My Stars Safe!';saveButton.style.cssText='margin:12px 0;padding:12px 18px;border-radius:12px;background:#d9f3e4;border:2px solid #39976e;font-weight:700';const status=document.createElement('p');status.id='emily-cloud-status';status.setAttribute('role','status');const hub=document.getElementById('hub');if(hub){hub.append(saveButton,status);const reloadButton=document.createElement('button');reloadButton.type='button';reloadButton.textContent='↻ Get My Saved Stars';reloadButton.style.marginLeft='8px';hub.append(reloadButton);reloadButton.addEventListener('click',()=>load(true));saveButton.addEventListener('click',async()=>{saveButton.disabled=true;status.textContent='Saving…';const ok=await save();status.textContent=ok?'🎉 Your stars and answers are safe!':'Cloud save did not finish. Progress remains on this device.';saveButton.disabled=false})}}
+ if(child==='emily'){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='🌟 Keep My Stars Safe!';saveButton.style.cssText='margin:12px 0;padding:12px 18px;border-radius:12px;background:#d9f3e4;border:2px solid #39976e;font-weight:700';const status=document.createElement('p');status.id='emily-cloud-status';status.setAttribute('role','status');const hub=document.getElementById('hub');if(hub){hub.append(saveButton,status);const reloadButton=document.createElement('button');reloadButton.type='button';reloadButton.textContent='↻ Get My Saved Stars';reloadButton.style.marginLeft='8px';hub.append(reloadButton);reloadButton.addEventListener('click',()=>load(false));saveButton.addEventListener('click',async()=>{saveButton.disabled=true;status.textContent='Saving…';const ok=await save();status.textContent=ok?'🎉 Your stars and answers are safe!':'Cloud save did not finish. Progress remains on this device.';saveButton.disabled=false})}}
  if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';document.getElementById('jason-roadmap')?.append(indicator);const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load(true));document.getElementById('jason-roadmap')?.append(retry)}
  const message=panel.querySelector('.cloud-message');
  let sha=null,cloudExists=false;
@@ -80,32 +80,28 @@
        return;
      }
      const remoteData=result.data.data;
-     const local=snapshot();
-     let remoteAnswers={},localAnswers={};
-     try{
-       remoteAnswers=JSON.parse(remoteData.raw||'{}').answers||{};
-       localAnswers=JSON.parse(local.raw||'{}').answers||{};
-     }catch(e){throw Error('Unable to read Emily progress')}
-     // Keep completed answers from either device. Cloud wins only where both have
-     // completed the same question; uncompleted local answers remain intact.
-     const combined={...localAnswers,...remoteAnswers};
-     for(const [id,answer] of Object.entries(remoteAnswers)){
-       if(localAnswers[id]?.checked===true&&answer?.checked!==true)combined[id]=localAnswers[id];
-     }
-     const localParsed=JSON.parse(local.raw||'{"version":2,"tab":"english","answers":{}}');
-     const mergedRaw=JSON.stringify({...localParsed,version:2,answers:combined});
-     let remoteShop={},localShop={};
-     try{remoteShop=JSON.parse(remoteData.shop||'{}');localShop=JSON.parse(local.shop||'{}')}catch(e){}
-     const mergedShop={...localShop,...remoteShop};
-     const changed=JSON.stringify(localAnswers)!==JSON.stringify(combined)||JSON.stringify(localShop)!==JSON.stringify(mergedShop);
-     if(changed){
-       localStorage.setItem('emily-adventure-v2',mergedRaw);
-       localStorage.setItem('emily-shop-v1',JSON.stringify(mergedShop));
-       say('🌈 Saved progress restored!');
-       location.reload();
+     if(typeof remoteData.raw!=='string')throw Error('No saved English or Maths answers found');
+     const remoteParsed=JSON.parse(remoteData.raw);
+     const localRaw=localStorage.getItem('emily-adventure-v2');
+     const localParsed=JSON.parse(localRaw||'{"version":2,"answers":{}}');
+     const localAnswers=localParsed.answers||{};
+     const remoteAnswers=remoteParsed.answers||{};
+     const localCompleted=Object.values(localAnswers).filter(v=>v?.checked===true).length;
+     const remoteCompleted=Object.values(remoteAnswers).filter(v=>v?.checked===true).length;
+     // An explicit restore always loads the verified cloud copy. Keep a backup
+     // before replacing any local answers so unsynced work is recoverable.
+     if(!automatic||localCompleted===0){
+       if(localRaw&&localRaw!==remoteData.raw)localStorage.setItem('emily-before-cloud-restore',localRaw);
+       const changed=localRaw!==remoteData.raw;
+       localStorage.setItem('emily-adventure-v2',remoteData.raw);
+       if(typeof remoteData.shop==='string'&&!localStorage.getItem('emily-shop-v1'))localStorage.setItem('emily-shop-v1',remoteData.shop);
+       say('🌈 '+remoteCompleted+' completed answers loaded from family cloud!');
+       if(changed){location.reload();return}
        return;
      }
-     say('🌈 Your saved answers are ready!');
+     // Existing completed local work is never silently overwritten.
+     if(localRaw!==remoteData.raw){say('☁️ Cloud answers available ('+remoteCompleted+' completed). Tap Get My Saved Stars to load them.');return}
+     say('🌈 '+remoteCompleted+' completed answers ready!');
    }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message}
  }
  let initialLoad;
@@ -125,7 +121,7 @@
    }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
  window.adventureCloudSave=save;
- window.adventureCloudLoad=()=>load(true);
+ window.adventureCloudLoad=()=>load(false);
  panel.querySelector('[data-action="save"]').addEventListener('click',save);
  panel.querySelector('[data-action="load"]').addEventListener('click',()=>load(false));
  initialLoad=load(true);
