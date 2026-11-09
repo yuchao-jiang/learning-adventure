@@ -9,10 +9,11 @@
  const target=document.querySelector('header');
  // Cloud controls are hidden on both learner roadmaps; automatic restore remains active.
  panel.hidden=true;
+ if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';document.getElementById('jason-roadmap')?.append(indicator)}
  const message=panel.querySelector('.cloud-message');
  let sha=null,cloudExists=false;
  const pinKey='adventure-family-pin-session';
- const say=t=>message.textContent=t;
+ const say=t=>{message.textContent=t;const indicator=document.getElementById('cloud-sync-status');if(indicator)indicator.textContent=t};
  const endpoint=url+'?child='+encodeURIComponent(child);
  const getLocal=()=>child==='emily'?localStorage.getItem('emily-adventure-v2'):localStorage.getItem('jason-reading-v1');
  // Emily's persistence library stores versioned data; use its own storage key.
@@ -84,13 +85,17 @@
      sessionStorage.setItem('adventure-loaded-'+child,result.sha||'loaded');location.reload();
    }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message}
  }
+ let initialLoad;
  async function save(){
+   if(initialLoad)await initialLoad;
    if(!url){say('Cloud saving needs a one-time family setup. Your work is still saved on this device.');return false}
    let pin=sessionStorage.getItem(pinKey);
    if(!pin){pin=prompt('🔐 Ask a grown-up for the family PIN (once per tab session):');if(pin===null)return false;}
    try{
-     // Fetch latest SHA to support the first save, but never overwrite a changed cloud version silently.
-     if(!cloudExists){const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;if(cloudExists){say('An adventure already exists in the cloud. Load it before saving to avoid losing work.');return false}}
+     // Refresh remote state before writing so a second device cannot silently replace it.
+     const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;
+     if(cloudExists&&child==='jason')mergeJason(latest.data.data);
+     else if(cloudExists&&child==='emily'){say('A cloud save exists. Refresh this page before replacing it.');return false}
      const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Your adventure is safely saved!');return true;
    }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
@@ -98,5 +103,5 @@
  window.adventureCloudLoad=()=>load(true);
  panel.querySelector('[data-action="save"]').addEventListener('click',save);
  panel.querySelector('[data-action="load"]').addEventListener('click',()=>load(false));
- load(true);
+ initialLoad=load(true);
 })();
