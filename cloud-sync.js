@@ -38,23 +38,51 @@
    const response=await fetch(endpoint,{method,cache:'no-store',headers:{...(method==='POST'?{'Content-Type':'application/json','X-Family-Pin':pin}:{})},...(method==='POST'?{body:JSON.stringify({version:1,child,sha,data})}:{})});
    const body=await response.json();if(!response.ok)throw Error(body.error||'Cloud connection failed');return body;
  }
+ function mergeJason(cloudData){
+   if(!cloudData||typeof cloudData.answers!=='string')throw Error('Invalid cloud answers');
+   let remote={},local={};
+   try{remote=JSON.parse(cloudData.answers||'{}');local=JSON.parse(localStorage.getItem('jason-reading-v1')||'{}')}catch{throw Error('Invalid saved answers')}
+   // Cloud-submitted work is authoritative; never unlock or overwrite a submitted set.
+   const merged={...remote,...local};
+   const submitted={...(local._submitted||{}),...(remote._submitted||{})};
+   merged._submitted=submitted;
+   for(const set of [1,2]){
+     if(remote._submitted?.[set]){
+       for(const [id,value] of Object.entries(remote))if(id.startsWith(set+'-'))merged[id]=value;
+     }
+   }
+   const history={};for(const set of [1,2]){
+     const events=[...(remote._history?.[set]||[]),...(local._history?.[set]||[])];
+     const unique=new Map();for(const e of events)unique.set((e.type||'')+'|'+(e.at||''),e);
+     history[set]=[...unique.values()].sort((a,b)=>String(a.at).localeCompare(String(b.at)));
+   }
+   merged._history=history;
+   const raw=JSON.stringify(merged);
+   const changed=raw!==JSON.stringify(local);
+   localStorage.setItem('jason-reading-v1',raw);
+   for(const [k,v] of Object.entries(cloudData.notes||{})){
+     if(k.startsWith('jason-reading-notes-v1-')&&typeof v==='string'&&!localStorage.getItem(k))localStorage.setItem(k,v);
+   }
+   return changed;
+ }
  async function load(automatic=false){
-   if(!url){say('Cloud saving needs a one-time family setup. Your work is still saved on this device.');return}
+   if(!url){say('Cloud connection is not configured.');return}
    try{
      const result=await request('GET');sha=result.sha||null;cloudExists=!!result.exists;
-     if(!result.exists){say('No cloud adventure saved yet. Use Save My Adventure first.');return}
+     if(!result.exists){say('No cloud save yet.');return}
+     if(child==='jason'){
+       const changed=mergeJason(result.data.data);
+       say('🌈 Cloud progress synced.');
+       if(changed){sessionStorage.setItem('adventure-loaded-'+child,result.sha||'loaded');location.reload()}
+       return;
+     }
      if(automatic){
-       // Only auto-restore if no local work exists. Never silently overwrite unsynced answers.
        const local=snapshot();
-       const hasLocal=child==='emily'?!!local.raw:!!local.answers&&local.answers!=='{}';
-       if(hasLocal){
-         const same=JSON.stringify(local)===JSON.stringify(result.data.data);
-         if(same){say('🌈 Your adventure is ready!');return}
-         say('☁️ Cloud progress found. Tap Continue My Adventure to switch to it; your local work is kept safe.');return;
-       }
-     }else if(!confirm('Continue with the cloud adventure? This will replace answers saved on this device.'))return;
-     restore(result.data.data);say('🌈 Adventure loaded! Opening your saved work…');sessionStorage.setItem('adventure-loaded-'+child,result.sha||'loaded');setTimeout(()=>location.reload(),600);
-   }catch(e){say('Could not load: '+e.message)}
+       if(local.raw){say('Your local progress is safe.');return}
+     }else if(!confirm('Load cloud progress? This will replace local answers.'))return;
+     restore(result.data.data);
+     sessionStorage.setItem('adventure-loaded-'+child,result.sha||'loaded');location.reload();
+   }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message}
  }
  async function save(){
    if(!url){say('Cloud saving needs a one-time family setup. Your work is still saved on this device.');return false}
@@ -67,7 +95,8 @@
    }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
  window.adventureCloudSave=save;
+ window.adventureCloudLoad=()=>load(true);
  panel.querySelector('[data-action="save"]').addEventListener('click',save);
  panel.querySelector('[data-action="load"]').addEventListener('click',()=>load(false));
- if(!sessionStorage.getItem('adventure-loaded-'+child))load(true);else {sessionStorage.removeItem('adventure-loaded-'+child);say('🌈 Your adventure is ready!')}
+ load(true);
 })();
