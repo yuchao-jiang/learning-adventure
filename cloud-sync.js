@@ -11,6 +11,7 @@
  panel.hidden=true;
  const message=panel.querySelector('.cloud-message');
  let sha=null,cloudExists=false;
+ const pinKey='adventure-family-pin-session';
  const say=t=>message.textContent=t;
  const endpoint=url+'?child='+encodeURIComponent(child);
  const getLocal=()=>child==='emily'?localStorage.getItem('emily-adventure-v2'):localStorage.getItem('jason-reading-v1');
@@ -57,13 +58,13 @@
  }
  async function save(){
    if(!url){say('Cloud saving needs a one-time family setup. Your work is still saved on this device.');return false}
-   const pin=prompt('🔐 Ask a grown-up for the family PIN to save your adventure:');
-   if(pin===null)return false;
+   let pin=sessionStorage.getItem(pinKey);
+   if(!pin){pin=prompt('🔐 Ask a grown-up for the family PIN (once per tab session):');if(pin===null)return false;}
    try{
      // Fetch latest SHA to support the first save, but never overwrite a changed cloud version silently.
      if(!cloudExists){const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;if(cloudExists){say('An adventure already exists in the cloud. Load it before saving to avoid losing work.');return false}}
-     const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;say('🌟 Your adventure is safely saved!');return true;
-   }catch(e){say('Could not save: '+e.message);return false}
+     const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Your adventure is safely saved!');return true;
+   }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
  window.adventureCloudSave=save;
  panel.querySelector('[data-action="save"]').addEventListener('click',save);
