@@ -137,6 +137,14 @@
      const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Your adventure is safely saved!');return true;
    }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
+ if(child==='emily'){
+   let pending=null;
+   window.addEventListener('adventure-progress-changed',()=>{
+     if(!sessionStorage.getItem(pinKey))return;
+     clearTimeout(pending);
+     pending=setTimeout(()=>{save().catch(()=>{});},1200);
+   });
+ }
  window.adventureCloudSave=save;
  window.adventureCloudLoad=()=>load(false);
  panel.querySelector('[data-action="save"]').addEventListener('click',save);
