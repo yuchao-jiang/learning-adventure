@@ -1,0 +1,14 @@
+name: Website tests
+on:
+  push:
+  pull_request:
+jobs:
+  maths-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run Jason Maths tests
+        run: node --test tests/jason-maths.test.cjs
