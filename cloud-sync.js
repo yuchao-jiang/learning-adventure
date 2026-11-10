@@ -82,6 +82,21 @@
    }
    return changed;
  }
+ function mergeEmily(remoteRaw){
+   const key='emily-adventure-v2',localRaw=localStorage.getItem(key);
+   const remote=JSON.parse(remoteRaw),local=JSON.parse(localRaw||'{"version":2,"answers":{}}');
+   if(!remote||remote.version!==2||!remote.answers||typeof remote.answers!=='object')throw Error('Invalid cloud answers');
+   const answers={...remote.answers,...(local.answers||{})};
+   // A completed answer must never be replaced by an unfinished answer.
+   for(const [id,entry] of Object.entries(remote.answers)){
+     if(entry&&entry.checked===true&&!(local.answers||{})[id]?.checked)answers[id]=entry;
+   }
+   const merged={version:2,tab:local.tab||remote.tab||'english',answers};
+   const raw=JSON.stringify(merged);
+   if(localRaw&&localRaw!==raw)localStorage.setItem('emily-before-cloud-restore',localRaw);
+   localStorage.setItem(key,raw);
+   return {changed:raw!==localRaw,completed:Object.values(answers).filter(v=>v?.checked===true).length};
+ }
  async function load(automatic=false){
    if(!url){say('Cloud connection is not configured.');return}
    try{
@@ -96,27 +111,12 @@
      const remoteData=result.data.data;
      const cupcakeChanged=mergeCupcake(remoteData.cupcake);
      if(typeof remoteData.raw!=='string')throw Error('No saved English or Maths answers found');
-     const remoteParsed=JSON.parse(remoteData.raw);
-     const localRaw=localStorage.getItem('emily-adventure-v2');
-     const localParsed=JSON.parse(localRaw||'{"version":2,"answers":{}}');
-     const localAnswers=localParsed.answers||{};
-     const remoteAnswers=remoteParsed.answers||{};
-     const localCompleted=Object.values(localAnswers).filter(v=>v?.checked===true).length;
-     const remoteCompleted=Object.values(remoteAnswers).filter(v=>v?.checked===true).length;
-     // An explicit restore always loads the verified cloud copy. Keep a backup
-     // before replacing any local answers so unsynced work is recoverable.
-     if(!automatic||localCompleted===0){
-       if(localRaw&&localRaw!==remoteData.raw)localStorage.setItem('emily-before-cloud-restore',localRaw);
-       const changed=localRaw!==remoteData.raw;
-       localStorage.setItem('emily-adventure-v2',remoteData.raw);
-       if(typeof remoteData.shop==='string'&&!localStorage.getItem('emily-shop-v4'))localStorage.setItem('emily-shop-v4',remoteData.shop);
-       say('🌈 '+remoteCompleted+' completed answers loaded from family cloud!');
-       if(changed||cupcakeChanged){location.reload();return}
-       return;
+     const merged=mergeEmily(remoteData.raw);
+     if(typeof remoteData.shop==='string'){
+       try{const remoteShop=JSON.parse(remoteData.shop),localShop=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remoteShop,...localShop}))}catch(e){}
      }
-     // Existing completed local work is never silently overwritten.
-     if(localRaw!==remoteData.raw){say('☁️ Cloud answers available ('+remoteCompleted+' completed). Existing local work has been kept.');if(cupcakeChanged)location.reload();return}
-     say('🌈 '+remoteCompleted+' completed answers ready!');if(cupcakeChanged)location.reload();
+     say('🌈 '+merged.completed+' completed answers ready across devices!');
+     if(merged.changed||cupcakeChanged)location.reload();
    }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message}
  }
  let initialLoad;
@@ -129,6 +129,7 @@
      // Refresh remote state before writing so a second device cannot silently replace it.
      const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;
      if(cloudExists&&child==='jason')mergeJason(latest.data.data);
+     if(cloudExists&&child==='emily'&&typeof latest.data.data.raw==='string')mergeEmily(latest.data.data.raw);
      if(cloudExists&&child==='emily'&&typeof latest.data.data.shop==='string'){
        try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remote,...own}))}catch(e){}
      }
