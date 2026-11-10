@@ -28,6 +28,7 @@
           version: 2, tab: tab === 'maths' ? 'maths' : 'english',
           answers: cleanAnswers(answers)
         }));
+        try { root.dispatchEvent(new Event('adventure-progress-changed')); } catch (e) {}
         return { ok: true };
       } catch (error) {
         return { ok: false, reason: 'unavailable' };
