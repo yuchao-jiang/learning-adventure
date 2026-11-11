@@ -10,4 +10,8 @@ The website still saves locally until the Worker URL is configured. Do not put t
 
 **Important:** A shared PIN alone does not provide strong protection against repeated guesses. Before regular use, configure Cloudflare rate limiting/WAF for the Worker (particularly POST requests), or use stronger authentication. The Worker never puts the GitHub token or PIN in public website code. JSON files under `data/` are public once saved. Every cloud save creates a GitHub commit. Avoid simultaneous edits: saving from one device after another may overwrite older progress; check before saving.
 
-Cloud loading automatically happens only on a device with no local answers; when local answers exist, tap **Continue My Adventure** to choose whether to replace them. Existing local progress is not deleted during setup.
+Cloud loading automatically merges saved progress on both learner pages. Emily's
+completed answers and solved cupcake clues are preserved; Jason's submitted sets
+remain locked. The visible Save buttons publish local work, and Jason's
+“Reload saved progress” button retries loading. A concurrent cloud write is
+rejected when its SHA is stale, so load again before retrying.

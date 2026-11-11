@@ -11,6 +11,7 @@ assert.ok(source, 'maths application script exists');
 function setup(saved = {}) {
   const elements = new Map();
   function el(id) {
+    assert.ok(html.includes('id="' + id + '"'), 'Page element exists: ' + id);
     if (!elements.has(id)) elements.set(id, {
       value: '1', textContent: '', innerHTML: '', hidden: false, disabled: false,
       classList: { toggle() {} }, append() {}, appendChild() {}
@@ -98,4 +99,16 @@ test('reset clears maths records without touching reading progress', () => {
   app.run('startSession();resetTest()');
   assert.equal(app.storage.getItem('jason-maths-two-weeks-v1'), null);
   assert.equal(app.storage.getItem('jason-reading-v1'), '{"test":"keep"}');
+});
+
+
+test('mission selection keeps an accessible name without redundant instructions', () => {
+  assert.match(html, /<select aria-label="Choose a maths mission" id="week"/);
+  assert.doesNotMatch(html, /Choose a mission:|Start with Careful Thinker\./);
+});
+
+test('cube question has the correct answer without a runtime correction', () => {
+  const app = setup();
+  assert.equal(app.run('data.find(q=>q.topic==="3D shapes").o[data.find(q=>q.topic==="3D shapes").a]'), '40');
+  assert.doesNotMatch(source, /data\[6\]\.o=/);
 });
