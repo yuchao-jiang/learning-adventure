@@ -3,7 +3,7 @@
 const key='emily-parcel-v1';
 const questions=[
  {scene:'A colourful parcel arrives at the animal rescue centre. The label reads: “For the new puppy. Open before the party!”',q:'Who is the parcel for?',options:['The new puppy','The postman','The kitten'],answer:0,hint:'Look for the words after “For”.',skill:'Reading for details'},
- {scene:'Emily opens the parcel. Inside are 4 blue ribbons and 3 yellow ribbons.',q:'How many ribbons are there altogether?',options:['6','7','8'],answer:1,hint:'Count four, then three more.',skill:'Addition'},
+ {scene:'Emily opens the parcel and finds a card from Biscuit. It says: “I am so exsited for the puppy party!” Emily spots one word that needs fixing.',q:'Which is the correct spelling of the word?',options:['exsited','excited','exited'],answer:1,hint:'The word means very happy and eager. Listen for the /k/ sound after the first two letters.',skill:'Spelling'},
  {scene:'A note says: “Put the tiny red bow beside the large green box.”',q:'Which word means the opposite of “tiny”?',options:['Red','Large','Beside'],answer:1,hint:'Think of something that is very big.',skill:'Vocabulary'},
  {scene:'There are 8 biscuits for the puppies. Two puppies each eat 2 biscuits.',q:'How many biscuits are left?',options:['2','4','6'],answer:1,hint:'How many were eaten in total?',skill:'Subtraction'},
  {scene:'Emily finds a clue: “First find the star, then look under the table.”',q:'What should Emily do FIRST?',options:['Look under the table','Find the star','Open another parcel'],answer:1,hint:'The clue tells you the order.',skill:'Following instructions'},
