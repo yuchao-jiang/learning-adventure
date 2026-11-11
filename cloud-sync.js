@@ -13,7 +13,7 @@
  // Emily's persistence library stores versioned data; use its own storage key.
  function snapshot(){
    if(child==='emily'){
-     return {storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1')};
+     return {storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1')};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
    return {answers:localStorage.getItem('jason-reading-v1'),notes};
@@ -29,6 +29,19 @@
    const previous=JSON.stringify({step:local.step||0,solved:local.solved||[],hints:local.hints||[]});
    const changed=previous!==JSON.stringify(merged);
    localStorage.setItem('emily-cupcake-trial-v1',JSON.stringify(merged));
+   return changed;
+ }
+ function mergeParcel(remoteRaw){
+   if(typeof remoteRaw!=='string')return false;
+   let remote,local;
+   try{remote=JSON.parse(remoteRaw);local=JSON.parse(localStorage.getItem('emily-parcel-v1')||'{}')}catch{return false}
+   if(!remote||!Array.isArray(remote.solved))return false;
+   const solved=Array.from({length:8},(_,i)=>Boolean(remote.solved[i]||local.solved?.[i]));
+   const hints=Array.from({length:8},(_,i)=>Boolean(remote.hints?.[i]||local.hints?.[i]));
+   let step=0;while(step<8&&solved[step])step++;
+   const merged=JSON.stringify({step,solved,hints});
+   const changed=merged!==localStorage.getItem('emily-parcel-v1');
+   if(changed)localStorage.setItem('emily-parcel-v1',merged);
    return changed;
  }
  async function request(method,pin,data){
@@ -91,13 +104,14 @@
      }
      const remoteData=result.data.data;
      const cupcakeChanged=mergeCupcake(remoteData.cupcake);
+     const parcelChanged=mergeParcel(remoteData.parcel);
      if(typeof remoteData.raw!=='string')throw Error('No saved English or Maths answers found');
      const merged=mergeEmily(remoteData.raw);
      if(typeof remoteData.shop==='string'){
        try{const remoteShop=JSON.parse(remoteData.shop),localShop=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remoteShop,...localShop}))}catch(e){}
      }
      say('🌈 '+merged.completed+' completed answers ready across devices!');
-     if(merged.changed||cupcakeChanged)location.reload();
+     if(merged.changed||cupcakeChanged||parcelChanged)location.reload();
    }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message}
  }
  let initialLoad;
@@ -115,6 +129,7 @@
        try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remote,...own}))}catch(e){}
      }
      if(cloudExists&&child==='emily'&&typeof latest.data.data.cupcake==='string')mergeCupcake(latest.data.data.cupcake);
+     if(cloudExists&&child==='emily'&&typeof latest.data.data.parcel==='string')mergeParcel(latest.data.data.parcel);
      const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Your adventure is safely saved!');return true;
    }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
