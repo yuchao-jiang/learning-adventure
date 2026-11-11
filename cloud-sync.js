@@ -4,39 +4,19 @@
  const url=String(window.ADVENTURE_SYNC_URL||'').replace(/[/]$/,'');
  const child=document.body.dataset.learner;
  if(!['emily','jason'].includes(child))return;
- const panel=document.createElement('section');panel.className='cloud-controls';
- panel.innerHTML='<strong>☁️ My Adventure</strong><div class="cloud-buttons"><button type="button" data-action="save">☁️ Save My Adventure</button><button type="button" data-action="load">🌈 Continue My Adventure</button></div><p class="cloud-message" role="status" aria-live="polite"></p>';
- const target=document.querySelector('header');
- // Cloud controls are hidden on both learner roadmaps; automatic restore remains active.
- panel.hidden=true;
  if(child==='emily'){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='🌟 Keep My Stars Safe!';saveButton.style.cssText='margin:12px 0;padding:12px 18px;border-radius:12px;background:#d9f3e4;border:2px solid #39976e;font-weight:700';const status=document.createElement('p');status.id='emily-cloud-status';status.setAttribute('role','status');const hub=document.getElementById('hub');if(hub){hub.append(saveButton,status);saveButton.addEventListener('click',async()=>{saveButton.disabled=true;status.textContent='Saving…';const ok=await save();status.textContent=ok?'🎉 Your stars and answers are safe!':'Cloud save did not finish. Progress remains on this device.';saveButton.disabled=false})}}
- if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';document.getElementById('jason-roadmap')?.append(indicator);const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load(true));document.getElementById('jason-roadmap')?.append(retry)}
- const message=panel.querySelector('.cloud-message');
+ if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';document.getElementById('jason-roadmap')?.append(indicator);const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load());document.getElementById('jason-roadmap')?.append(retry)}
  let sha=null,cloudExists=false;
  const pinKey='adventure-family-pin-session';
- const say=t=>{message.textContent=t;const indicator=document.getElementById('cloud-sync-status');if(indicator)indicator.textContent=t;const emily=document.getElementById('emily-cloud-status');if(emily)emily.textContent=t};
+ const say=t=>{const indicator=document.getElementById('cloud-sync-status');if(indicator)indicator.textContent=t;const emily=document.getElementById('emily-cloud-status');if(emily)emily.textContent=t};
  const endpoint=url+'?child='+encodeURIComponent(child);
- const getLocal=()=>child==='emily'?localStorage.getItem('emily-adventure-v2'):localStorage.getItem('jason-reading-v1');
  // Emily's persistence library stores versioned data; use its own storage key.
  function snapshot(){
    if(child==='emily'){
-     const key=Object.keys(localStorage).find(k=>k.includes('emily')&&k.includes('v2'));
-     return {storageKey:key||'emily-adventure-v2',raw:key?localStorage.getItem(key):null,shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1')};
+     return {storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1')};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
    return {answers:localStorage.getItem('jason-reading-v1'),notes};
- }
- function restore(data){
-   if(child==='emily'){
-     if((data.raw!==null&&typeof data.raw!=='string')||!data.storageKey||!/^emily[-a-z0-9]+$/i.test(data.storageKey))throw Error('Invalid saved Emily progress');
-     if(typeof data.raw==='string')localStorage.setItem(data.storageKey,data.raw);
-     if(typeof data.shop==='string')localStorage.setItem('emily-shop-v4',data.shop);
-     if(typeof data.cupcake==='string')mergeCupcake(data.cupcake);
-   }else{
-     if(typeof data.answers!=='string'||!data.notes||typeof data.notes!=='object')throw Error('Invalid saved Jason progress');
-     localStorage.setItem('jason-reading-v1',data.answers);
-     for(const [k,v] of Object.entries(data.notes))if(k.startsWith('jason-reading-notes-v1-')&&typeof v==='string')localStorage.setItem(k,v);
-   }
  }
  function mergeCupcake(remoteRaw){
    if(typeof remoteRaw!=='string')return false;
@@ -64,8 +44,9 @@
    const submitted={...(local._submitted||{}),...(remote._submitted||{})};
    merged._submitted=submitted;
    for(const set of [1,2]){
-     if(remote._submitted?.[set]){
-       for(const [id,value] of Object.entries(remote))if(id.startsWith(set+'-'))merged[id]=value;
+     const source=remote._submitted?.[set]?remote:local._submitted?.[set]?local:null;
+     if(source){
+       for(const [id,value] of Object.entries(source))if(id.startsWith(set+'-'))merged[id]=value;
      }
    }
    const history={};for(const set of [1,2]){
@@ -75,10 +56,10 @@
    }
    merged._history=history;
    const raw=JSON.stringify(merged);
-   const changed=Object.keys(remote).some(k=>JSON.stringify(local[k])!==JSON.stringify(merged[k]));
+   let changed=JSON.stringify(local)!==raw;
    localStorage.setItem('jason-reading-v1',raw);
    for(const [k,v] of Object.entries(cloudData.notes||{})){
-     if(k.startsWith('jason-reading-notes-v1-')&&typeof v==='string'&&!localStorage.getItem(k))localStorage.setItem(k,v);
+     if(k.startsWith('jason-reading-notes-v1-')&&typeof v==='string'&&!localStorage.getItem(k)){localStorage.setItem(k,v);changed=true}
    }
    return changed;
  }
@@ -97,7 +78,7 @@
    localStorage.setItem(key,raw);
    return {changed:raw!==localRaw,completed:Object.values(answers).filter(v=>v?.checked===true).length};
  }
- async function load(automatic=false){
+ async function load(){
    if(!url){say('Cloud connection is not configured.');return}
    try{
      const result=await request('GET');sha=result.sha||null;cloudExists=!!result.exists;
@@ -105,7 +86,7 @@
      if(child==='jason'){
        const changed=mergeJason(result.data.data);
        say('🌈 Cloud progress synced.');
-       if(changed){sessionStorage.setItem('adventure-loaded-'+child,result.sha||'loaded');location.reload()}
+       if(changed)location.reload()
        return;
      }
      const remoteData=result.data.data;
@@ -146,8 +127,7 @@
    });
  }
  window.adventureCloudSave=save;
- window.adventureCloudLoad=()=>load(false);
- panel.querySelector('[data-action="save"]').addEventListener('click',save);
- panel.querySelector('[data-action="load"]').addEventListener('click',()=>load(false));
- initialLoad=load(true);
+ window.adventureCloudLoad=load;
+ initialLoad=load();
 })();
+
