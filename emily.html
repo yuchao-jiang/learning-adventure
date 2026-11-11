@@ -179,5 +179,5 @@ document.getElementById('cupcake-back').onclick=()=>{document.getElementById('cu
 document.getElementById('cupcake-next').onclick=()=>{cupcakeState.step=Math.min(5,cupcakeState.step+1);cupcakeSave();cupcakeRender()};
 document.getElementById('cupcake-cloud-save').onclick=async()=>{const b=document.getElementById('cupcake-cloud-save'),status=document.getElementById('cupcake-save-status');b.disabled=true;status.textContent='Saving…';const ok=typeof window.adventureCloudSave==='function'&&await window.adventureCloudSave();status.textContent=ok?'🌈 Cupcake clues saved for your other devices!':'Your clues are saved here, but cloud saving did not finish.';b.disabled=false};
 cupcakeRender();
-</script><script src="./emily-parcel.js?v=2"></script><script src="./cloud-config.js"></script><script src="./cloud-sync.js?v=57"></script></body></html>
+</script><script src="./emily-parcel.js?v=3"></script><script src="./cloud-config.js"></script><script src="./cloud-sync.js?v=57"></script></body></html>
 
