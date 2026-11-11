@@ -9,20 +9,22 @@ function storage(initial = {}) {
   return { getItem: k => values.get(k) ?? null, setItem: (k, v) => values.set(k, String(v)),
     removeItem: k => values.delete(k), key: i => [...values.keys()][i], get length() { return values.size; } };
 }
-async function setup(child, local, remote) {
-  const localStorage = storage(local), sessionStorage = storage({ 'adventure-family-pin-session': '1234' });
-  let reloads = 0; const writes = [];
+async function setup(child, local, remote, options = {}) {
+  const localStorage = storage(local), sessionStorage = storage(options.locked ? {} : { 'adventure-family-passphrase-session-v2': 'test-family-passphrase' });
+  let reloads = 0; const writes = [], requests = [];
   const element = () => ({ style: {}, append() {}, setAttribute() {}, addEventListener() {} });
-  const window = { ADVENTURE_SYNC_URL: 'https://sync.test', addEventListener() {} };
+  const window = { ADVENTURE_SYNC_URL: options.url || 'https://sync.test', addEventListener() {} };
   const context = { window, localStorage, sessionStorage, document: { body: { dataset: { learner: child } },
     createElement: element, getElementById: element }, location: { reload() { reloads++; } },
-    setTimeout, clearTimeout, prompt: () => '1234', fetch: async (url, options) => {
-      if (options.method === 'POST') { writes.push(JSON.parse(options.body)); return { ok: true, json: async () => ({ sha: 'new' }) }; }
-      return { ok: true, json: async () => ({ exists: true, sha: 'old', data: { data: remote } }) };
+    setTimeout, clearTimeout, prompt: () => options.cancel ? null : 'test-family-passphrase', fetch: async (url, fetchOptions) => {
+      requests.push({ method: fetchOptions.method, headers: fetchOptions.headers });
+      if(options.unauthorized)return {ok:false,status:401,json:async()=>({storage:'private-d1-v1',error:'Incorrect family passphrase'})};
+      if (fetchOptions.method === 'POST') { writes.push(JSON.parse(fetchOptions.body)); return { ok: true, json: async () => ({ sha: 'new', storage: 'private-d1-v1' }) }; }
+      return { ok: true, json: async () => ({ exists: true, sha: 'old', data: { data: remote }, ...(options.legacy ? {} : { storage: 'private-d1-v1' }) }) };
     } };
   vm.runInNewContext(source, context);
-  await window.adventureCloudLoad();
-  return { localStorage, window, writes, reloads: () => reloads };
+  if (!options.locked) await window.adventureCloudLoad();
+  return { localStorage, sessionStorage, window, writes, requests, reloads: () => reloads };
 }
 test('remote Jason drafts cannot overwrite locally submitted answers', async () => {
   const app = await setup('jason', { 'jason-reading-v1': JSON.stringify({ '1-1': { answer: 'B' }, _submitted: { 1: { correct: 1 } } }) },
@@ -51,4 +53,44 @@ test('Emily saves the exact progress key and preserves completed answers', async
   assert.equal(saved.answers.e1.value, 1);
   assert.equal(saved.answers.e2.checked, true);
   assert.equal(app.writes[0].data.storageKey, 'emily-adventure-v2');
+});
+
+test('locked pages make no automatic cloud requests; unlock authenticates reads', async () => {
+ const app = await setup('jason', {}, { answers: '{}', notes: {} }, { locked: true });
+ assert.equal(app.requests.length, 0);
+ await app.window.adventureCloudLoad();
+ assert.equal(app.requests.length, 1);
+ assert.equal(app.requests[0].headers['X-Family-Pin'], 'test-family-passphrase');
+ app.window.adventureCloudLock();
+ assert.equal(app.sessionStorage.getItem('adventure-family-passphrase-session-v2'), null);
+});
+test('cancelling unlock never reads or writes cloud progress', async () => {
+ const app = await setup('emily', {}, {}, { locked: true, cancel: true });
+ await app.window.adventureCloudLoad();
+ assert.equal(await app.window.adventureCloudSave(), false);
+ assert.equal(app.requests.length, 0);
+});
+test('legacy public endpoints are refused and cannot receive a new save', async () => {
+ const app = await setup('jason', {}, { answers: '{}', notes: {} }, { legacy: true });
+ assert.equal(await app.window.adventureCloudSave(), false);
+ assert.equal(app.writes.length, 0);
+});
+test('all read and write requests include credentials', async () => {
+ const app = await setup('jason', {}, { answers: '{}', notes: {} });
+ assert.equal(await app.window.adventureCloudSave(), true);
+ assert.ok(app.requests.some(r => r.method === 'POST'));
+ assert.ok(app.requests.every(r => r.headers['X-Family-Pin'] === 'test-family-passphrase'));
+});
+
+test('failed authentication clears the tab credential and preserves local work', async () => {
+ const app = await setup('jason', { 'jason-reading-v1': '{"draft":"keep"}' }, {}, { unauthorized: true });
+ assert.equal(app.sessionStorage.getItem('adventure-family-passphrase-session-v2'), null);
+ assert.equal(app.localStorage.getItem('jason-reading-v1'), '{"draft":"keep"}');
+ assert.equal(app.writes.length, 0);
+});
+test('insecure HTTP endpoints cannot receive credentials or progress', async () => {
+ const app = await setup('jason', {}, {}, { url: 'http://sync.test' });
+ await app.window.adventureCloudLoad();
+ assert.equal(await app.window.adventureCloudSave(), false);
+ assert.equal(app.requests.length, 0);
 });

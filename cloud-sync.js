@@ -1,13 +1,14 @@
 // Cloud sync is enabled after cloud-config.js defines window.ADVENTURE_SYNC_URL.
 // Local device progress remains available independently of the cloud.
 (function(){
- const url=String(window.ADVENTURE_SYNC_URL||'').replace(/[/]$/,'');
+ const configuredUrl=String(window.ADVENTURE_SYNC_URL||'').replace(/[/]$/,'');
+ const url=configuredUrl.startsWith('https://')?configuredUrl:'';
  const child=document.body.dataset.learner;
  if(!['emily','jason'].includes(child))return;
  if(child==='emily'){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='🌟 Keep My Stars Safe!';saveButton.style.cssText='margin:12px 0;padding:12px 18px;border-radius:12px;background:#d9f3e4;border:2px solid #39976e;font-weight:700';const status=document.createElement('p');status.id='emily-cloud-status';status.setAttribute('role','status');const hub=document.getElementById('hub');if(hub){hub.append(saveButton,status);saveButton.addEventListener('click',async()=>{saveButton.disabled=true;status.textContent='Saving…';const ok=await save();status.textContent=ok?'🎉 Your stars and answers are safe!':'Cloud save did not finish. Progress remains on this device.';saveButton.disabled=false})}}
- if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';document.getElementById('jason-roadmap')?.append(indicator);const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load());document.getElementById('jason-roadmap')?.append(retry)}
+ if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';document.getElementById('jason-roadmap')?.append(indicator);const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load(true));document.getElementById('jason-roadmap')?.append(retry)}
  let sha=null,cloudExists=false;
- const pinKey='adventure-family-pin-session';
+ const pinKey='adventure-family-passphrase-session-v2';
  const say=t=>{const indicator=document.getElementById('cloud-sync-status');if(indicator)indicator.textContent=t;const emily=document.getElementById('emily-cloud-status');if(emily)emily.textContent=t};
  const endpoint=url+'?child='+encodeURIComponent(child);
  // Emily's persistence library stores versioned data; use its own storage key.
@@ -32,8 +33,11 @@
    return changed;
  }
  async function request(method,pin,data){
-   const response=await fetch(endpoint,{method,cache:'no-store',headers:{...(method==='POST'?{'Content-Type':'application/json','X-Family-Pin':pin}:{})},...(method==='POST'?{body:JSON.stringify({version:1,child,sha,data})}:{})});
-   const body=await response.json();if(!response.ok)throw Error(body.error||'Cloud connection failed');return body;
+   const response=await fetch(endpoint,{method,cache:'no-store',headers:{'X-Family-Pin':pin,...(method==='POST'?{'Content-Type':'application/json'}:{})},...(method==='POST'?{body:JSON.stringify({version:1,child,sha,data})}:{})});
+   const body=await response.json();
+   if(body.storage!=='private-d1-v1')throw Error('This endpoint does not support private storage. Ask a parent to finish setup.');
+   if(!response.ok){if(response.status===401)sessionStorage.removeItem(pinKey);throw Error(body.error||'Cloud connection failed')}
+   return body;
  }
  function mergeJason(cloudData){
    if(!cloudData||typeof cloudData.answers!=='string')throw Error('Invalid cloud answers');
@@ -78,10 +82,18 @@
    localStorage.setItem(key,raw);
    return {changed:raw!==localRaw,completed:Object.values(answers).filter(v=>v?.checked===true).length};
  }
- async function load(){
+ function getPassphrase(interactive){
+   const stored=sessionStorage.getItem(pinKey);
+   if(stored)return stored;
+   if(!interactive)return null;
+   return prompt('Ask a parent for the family passphrase to unlock private cloud progress for this tab:');
+ }
+ async function load(interactive=false){
    if(!url){say('Cloud connection is not configured.');return}
+   const pin=getPassphrase(interactive);
+   if(!pin){say('Cloud progress is locked. Ask a parent to unlock it. Local work is available.');return false}
    try{
-     const result=await request('GET');sha=result.sha||null;cloudExists=!!result.exists;
+     const result=await request('GET',pin);sessionStorage.setItem(pinKey,pin);sha=result.sha||null;cloudExists=!!result.exists;
      if(!result.exists){say('No cloud save yet.');return}
      if(child==='jason'){
        const changed=mergeJason(result.data.data);
@@ -104,19 +116,19 @@
  async function save(){
    if(initialLoad)await initialLoad;
    if(!url){say('Cloud saving needs a one-time family setup. Your work is still saved on this device.');return false}
-   let pin=sessionStorage.getItem(pinKey);
-   if(!pin){pin=prompt('🔐 Ask a grown-up for the family PIN (once per tab session):');if(pin===null)return false;}
+   const pin=getPassphrase(true);
+   if(!pin)return false;
    try{
      // Refresh remote state before writing so a second device cannot silently replace it.
-     const latest=await request('GET');sha=latest.sha||null;cloudExists=!!latest.exists;
+     const latest=await request('GET',pin);sha=latest.sha||null;cloudExists=!!latest.exists;
      if(cloudExists&&child==='jason')mergeJason(latest.data.data);
      if(cloudExists&&child==='emily'&&typeof latest.data.data.raw==='string')mergeEmily(latest.data.data.raw);
      if(cloudExists&&child==='emily'&&typeof latest.data.data.shop==='string'){
        try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remote,...own}))}catch(e){}
      }
      if(cloudExists&&child==='emily'&&typeof latest.data.data.cupcake==='string')mergeCupcake(latest.data.data.cupcake);
-     const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Your adventure is safely saved!');return true;
-   }catch(e){if(/Incorrect family PIN/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
+     const result=await request('POST',pin,snapshot());sha=result.sha;cloudExists=true;sessionStorage.setItem(pinKey,pin);say('🌟 Progress saved to your private family storage.');return true;
+   }catch(e){if(/Incorrect family passphrase/i.test(e.message))sessionStorage.removeItem(pinKey);say('Could not save: '+e.message);return false}
  }
  if(child==='emily'){
    let pending=null;
@@ -127,7 +139,12 @@
    });
  }
  window.adventureCloudSave=save;
- window.adventureCloudLoad=load;
+ window.adventureCloudLoad=()=>load(true);
+ window.adventureCloudLock=()=>{sessionStorage.removeItem(pinKey);say('Cloud progress is locked. Local work remains on this device.')};
+ const controls=document.createElement('div');controls.className='actions';
+ const unlock=document.createElement('button');unlock.type='button';unlock.textContent='🔐 Unlock private cloud progress';unlock.addEventListener('click',()=>load(true));
+ const lock=document.createElement('button');lock.type='button';lock.textContent='Lock cloud';lock.addEventListener('click',window.adventureCloudLock);
+ controls.append(unlock,lock);document.getElementById(child==='emily'?'hub':'jason-roadmap')?.append(controls);
  initialLoad=load();
 })();
 

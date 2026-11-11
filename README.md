@@ -1,17 +1,21 @@
-# Emily's Little Learning Adventure
+# Learning Adventure
 
-An interactive, low-pressure NSW Year 1 English and Maths learning page.
+Public English and Maths learning pages for the family. Open `index.html` to
+choose an adventure. No website build tools or API keys are needed.
 
 ## Publish on GitHub Pages
 
-1. Create a new **public** GitHub repository, e.g. `emily-learning-adventure`.
-2. Upload `index.html` to the repository root and commit it.
-3. Go to **Settings → Pages**.
-4. Under **Build and deployment**, choose **Deploy from a branch**, select `main` and `/(root)`, then save.
-5. GitHub will show the published website URL when deployment finishes.
+Publish `main` from the repository root in **Settings → Pages**. Keep the HTML
+pages and their accompanying JavaScript files together.
 
-No build tools, package installs or API keys are required.
+## Progress and privacy
 
-## Privacy
+Answers are saved in this browser. Optional cloud progress uses a private
+Cloudflare D1 database, with a parent passphrase required for reads and writes.
+Cloud sync is disabled in `cloud-config.js` until the private Worker is deployed
+and existing progress has been imported. See [cloudflare/SETUP.md](cloudflare/SETUP.md).
+Never commit learner records, passphrases, private exports, or API tokens.
 
-Answers are saved only in the browser's localStorage (when supported), not uploaded to a server. Avoid entering private information in the writing activity. The site is public if the repository is public.
+Earlier progress files remain in Git history until the separate historic cleanup
+is completed. See [PRIVACY.md](PRIVACY.md) for data and deletion details and
+[TESTING.md](TESTING.md) for automated checks.
