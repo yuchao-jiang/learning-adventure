@@ -1,6 +1,8 @@
 // Public learning pages; authenticated progress in a private D1 binding named PROGRESS_DB.
 const STORAGE = 'private-d1-v1';
 const MAX_BYTES = 100000;
+const DAY = 24 * 60 * 60 * 1000;
+const hex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 async function digest(value) {
  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
@@ -34,8 +36,8 @@ export default { async fetch(request, env) {
  const allowed = env.ALLOWED_ORIGIN || 'https://yuchao-jiang.github.io';
  const headers = {
   'Access-Control-Allow-Origin': allowed,
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type,X-Family-Pin',
+  'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,X-Family-Pin,Authorization',
   'Cache-Control': 'no-store', 'Vary': 'Origin', 'X-Content-Type-Options': 'nosniff'
  };
  const reply = (body, status = 200, extra = {}) => new Response(JSON.stringify({ ...body, storage: STORAGE }), {
@@ -44,9 +46,12 @@ export default { async fetch(request, env) {
  const origin = request.headers.get('Origin');
  if (origin && origin !== allowed) return reply({ error: 'Origin not allowed' }, 403);
  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
- if (!['GET', 'POST'].includes(request.method)) return reply({ error: 'Method not allowed' }, 405);
- const child = new URL(request.url).searchParams.get('child');
- if (!['emily', 'jason'].includes(child)) return reply({ error: 'Unknown learner' }, 400);
+ const url = new URL(request.url);
+ const sessionRoute = url.pathname === '/session';
+ const revokeAllRoute = url.pathname === '/sessions';
+ if (sessionRoute ? !['POST', 'DELETE'].includes(request.method) : revokeAllRoute ? request.method !== 'DELETE' : !['GET', 'POST'].includes(request.method)) return reply({ error: 'Method not allowed' }, 405);
+ const child = url.searchParams.get('child');
+ if (!sessionRoute && !revokeAllRoute && !['emily', 'jason'].includes(child)) return reply({ error: 'Unknown learner' }, 400);
  if (!env.PROGRESS_DB || typeof env.FAMILY_PASSPHRASE !== 'string' || env.FAMILY_PASSPHRASE.length < 16 || env.FAMILY_PASSPHRASE.length > 256) {
   return reply({ error: 'Private storage is not configured' }, 503);
  }
@@ -54,14 +59,44 @@ export default { async fetch(request, env) {
   // Hash client identifiers with the secret; never persist raw addresses or credentials.
   const bucket = Math.floor(Date.now() / 60000);
   const clientBytes = await digest(env.FAMILY_PASSPHRASE + ':' + (request.headers.get('CF-Connecting-IP') || 'unknown'));
-  const client = Array.from(clientBytes, b => b.toString(16).padStart(2, '0')).join('');
+  const client = hex(clientBytes);
   const attempts = await env.PROGRESS_DB.prepare('SELECT attempts FROM auth_attempts WHERE client = ? AND bucket = ?').bind(client, bucket).first();
   if (attempts?.attempts >= 5) return reply({ error: 'Too many attempts. Try again in a minute.' }, 429, { 'Retry-After': '60' });
   const passphrase = request.headers.get('X-Family-Pin') || '';
-  if (passphrase.length > 256 || !await sameSecret(passphrase, env.FAMILY_PASSPHRASE)) {
+  const token = (request.headers.get('Authorization') || '').match(/^Bearer ([a-f0-9]{64})$/)?.[1];
+  const tokenHash = token ? hex(await digest(env.FAMILY_PASSPHRASE + ':' + token)) : null;
+  const needsParent = (sessionRoute && request.method === 'POST') || revokeAllRoute;
+  let authenticated = false;
+  if (!needsParent && tokenHash) {
+   const session = await env.PROGRESS_DB.prepare('SELECT expires_at FROM device_sessions WHERE token_hash = ?').bind(tokenHash).first();
+   authenticated = !!session && session.expires_at > Date.now();
+  } else if (!request.headers.has('Authorization')) {
+   authenticated = passphrase.length <= 256 && await sameSecret(passphrase, env.FAMILY_PASSPHRASE);
+  }
+  if (!authenticated) {
    await env.PROGRESS_DB.prepare('INSERT INTO auth_attempts (client, bucket, attempts) VALUES (?, ?, 1) ON CONFLICT(client, bucket) DO UPDATE SET attempts = attempts + 1').bind(client, bucket).run();
    await env.PROGRESS_DB.prepare('DELETE FROM auth_attempts WHERE bucket < ?').bind(bucket - 1).run();
-   return reply({ error: 'Incorrect family passphrase' }, 401);
+   return reply({ error: needsParent ? 'Incorrect family passphrase' : 'Cloud session expired or invalid. Ask a parent to unlock again.' }, 401);
+  }
+  if (revokeAllRoute) {
+   await env.PROGRESS_DB.prepare('DELETE FROM device_sessions').bind().run();
+   return reply({ ok: true });
+  }
+  if (sessionRoute && request.method === 'DELETE') {
+   if (!tokenHash) return reply({ error: 'A device token is required' }, 400);
+   await env.PROGRESS_DB.prepare('DELETE FROM device_sessions WHERE token_hash = ?').bind(tokenHash).run();
+   return reply({ ok: true });
+  }
+  if (sessionRoute) {
+   let options;
+   try { options = await readPayload(request); } catch { return reply({ error: 'Invalid session options' }, 400); }
+   if (!isObject(options) || typeof options.remember !== 'boolean') return reply({ error: 'Invalid session options' }, 400);
+   const now = Date.now(), expiresAt = now + (options.remember ? 30 * DAY : 12 * 60 * 60 * 1000);
+   const deviceToken = hex(crypto.getRandomValues(new Uint8Array(32)));
+   const hash = hex(await digest(env.FAMILY_PASSPHRASE + ':' + deviceToken));
+   await env.PROGRESS_DB.prepare('DELETE FROM device_sessions WHERE expires_at <= ?').bind(now).run();
+   await env.PROGRESS_DB.prepare('INSERT INTO device_sessions (token_hash, expires_at) VALUES (?, ?)').bind(hash, expiresAt).run();
+   return reply({ token: deviceToken, expiresAt, remembered: options.remember });
   }
   // Both reads and writes are authenticated before touching learner records.
   if (request.method === 'GET') {

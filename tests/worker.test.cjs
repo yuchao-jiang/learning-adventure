@@ -17,7 +17,7 @@ function setup() {
    async run() { return { meta: { changes: statement.run(...args).changes } }; }
   }; } };
  } } };
- const send = async (method = 'GET', body, headers = {}, child = 'emily') => (await worker).fetch(new Request('https://sync.test/?child=' + child, {
+ const send = async (method = 'GET', body, headers = {}, child = 'emily', route = '/') => (await worker).fetch(new Request('https://sync.test' + route + '?child=' + child, {
   method, headers: { 'X-Family-Pin': secret, 'CF-Connecting-IP': '192.0.2.1', ...headers },
   ...(body === undefined ? {} : { body: typeof body === 'string' ? body : JSON.stringify(body) })
  }), env);
@@ -110,4 +110,54 @@ test('database errors return no internal SQL or records', async () => {
  const response = await app.send();
  assert.equal(response.status, 503);
  assert.doesNotMatch(await response.text(), /secret details/);
+});
+
+test('remembered tokens last 30 days; D1 stores only their secret-bound hashes', async () => {
+ const app = setup(), before = Date.now();
+ const response = await app.send('POST', { remember: true }, {}, 'emily', '/session');
+ assert.equal(response.status, 200);
+ const session = await response.json();
+ assert.match(session.token, /^[a-f0-9]{64}$/);
+ assert.ok(session.expiresAt - before >= 30 * 86400000);
+ assert.ok(session.expiresAt - before < 30 * 86400000 + 2000);
+ const row = app.sqlite.prepare('SELECT * FROM device_sessions').get();
+ assert.notEqual(row.token_hash, session.token);
+ assert.equal(row.expires_at, session.expiresAt);
+ for (const child of ['emily', 'jason']) {
+  assert.equal((await app.send('GET', undefined, { 'X-Family-Pin': '', Authorization: 'Bearer ' + session.token }, child)).status, 200);
+ }
+ const saved = await app.send('POST', payload, { 'X-Family-Pin': '', Authorization: 'Bearer ' + session.token });
+ assert.equal(saved.status, 200);
+});
+test('temporary tokens expire after 12 hours; expired and invented tokens are rejected', async () => {
+ const app = setup();
+ const session = await (await app.send('POST', { remember: false }, {}, 'emily', '/session')).json();
+ assert.ok(session.expiresAt - Date.now() <= 12 * 3600000);
+ app.sqlite.prepare('UPDATE device_sessions SET expires_at = 0').run();
+ assert.equal((await app.send('GET', undefined, { Authorization: 'Bearer ' + session.token })).status, 401);
+ assert.equal((await app.send('GET', undefined, { Authorization: 'Bearer ' + 'a'.repeat(64) })).status, 401);
+});
+test('locking one device revokes only that token; a parent can revoke all devices', async () => {
+ const app = setup();
+ const login = async () => (await app.send('POST', { remember: true }, {}, 'emily', '/session')).json();
+ const a = await login(), b = await login();
+ assert.notEqual(a.token, b.token);
+ assert.equal((await app.send('DELETE', undefined, { Authorization: 'Bearer ' + a.token }, 'emily', '/session')).status, 200);
+ assert.equal((await app.send('GET', undefined, { Authorization: 'Bearer ' + a.token })).status, 401);
+ assert.equal((await app.send('GET', undefined, { Authorization: 'Bearer ' + b.token })).status, 200);
+ assert.equal((await app.send('DELETE', undefined, { Authorization: 'Bearer ' + b.token }, 'emily', '/sessions')).status, 401);
+ assert.equal((await app.send('DELETE', undefined, {}, 'emily', '/sessions')).status, 200);
+ assert.equal((await app.send('GET', undefined, { Authorization: 'Bearer ' + b.token })).status, 401);
+});
+test('rotating the parent passphrase invalidates all old tokens', async () => {
+ const app = setup();
+ const session = await (await app.send('POST', { remember: true }, {}, 'emily', '/session')).json();
+ app.env.FAMILY_PASSPHRASE = 'replacement-parent-passphrase';
+ assert.equal((await app.send('GET', undefined, { Authorization: 'Bearer ' + session.token })).status, 401);
+});
+test('login requires a parent passphrase and explicit remember choice', async () => {
+ const app = setup();
+ assert.equal((await app.send('POST', { remember: true }, { 'X-Family-Pin': '' }, 'emily', '/session')).status, 401);
+ assert.equal((await app.send('POST', { remember: 'true' }, {}, 'emily', '/session')).status, 400);
+ assert.equal(app.sqlite.prepare('SELECT count(*) n FROM device_sessions').get().n, 0);
 });

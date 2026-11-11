@@ -15,6 +15,8 @@ No external dependencies are required. The suite covers:
 - Worker authentication for GET and POST, failed-login throttling, atomic private
   database writes, stale-save conflicts, body limits and Unicode round trips.
 - Locked-browser behavior, cancelled unlocks and rejection of legacy public endpoints.
+- Remembered-device expiry, token hashing, per-device/all-device revocation and
+  passphrase rotation; no stored parent passphrase.
 - Private migration exports and non-overwriting imports.
 
 Cloud tests use mock requests and storage; they never write to GitHub or Cloudflare.

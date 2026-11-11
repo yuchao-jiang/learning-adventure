@@ -9,3 +9,7 @@ CREATE TABLE IF NOT EXISTS auth_attempts (
  attempts INTEGER NOT NULL,
  PRIMARY KEY (client, bucket)
 );
+CREATE TABLE IF NOT EXISTS device_sessions (
+ token_hash TEXT PRIMARY KEY,
+ expires_at INTEGER NOT NULL
+);
