@@ -29,7 +29,6 @@ function render(){
  if(step===questions.length){const p=document.createElement('div');p.className='end';p.textContent='🎉 Surprise! The puppies have a party! You solved every clue. ⭐ Great work, Emily!';area.append(p);$('parcel-hint').hidden=true;return}
  const q=questions[step],intro=document.createElement('p');intro.className='story';intro.style.padding='14px';intro.textContent=q.scene;area.append(intro);
  const title=document.createElement('h3');title.textContent='Clue '+(step+1)+': '+q.q;area.append(title);
- const skill=document.createElement('p');skill.className='muted';skill.textContent='Mission skill: '+q.skill;area.append(skill);
  const choices=document.createElement('div');choices.className='choices';
  q.options.forEach((option,i)=>{const b=document.createElement('button');b.type='button';b.textContent=option;b.disabled=!!state.solved[step];b.onclick=()=>{if(i===q.answer){state.solved[step]=true;save();render();$('parcel-feedback').textContent='🌟 You found the clue!';$('parcel-next').hidden=false}else{$('parcel-feedback').textContent='💛 Not quite. Read the clue and try again!'}};choices.append(b)});
  area.append(choices);
