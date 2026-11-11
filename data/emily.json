@@ -7,5 +7,5 @@
     "shop": "{\"0-0\":0,\"0-1\":1,\"0-2\":1,\"1-0\":1,\"1-1\":1,\"1-2\":1,\"2-0\":0,\"2-1\":1,\"2-2\":2}",
     "cupcake": "{\"step\":5,\"solved\":[true,true,true,true,true],\"hints\":[true,true,false,false,false]}"
   },
-  "updatedAt": "2026-11-11T09:44:44.932Z"
+  "updatedAt": "2026-11-11T09:45:43.844Z"
 }
