@@ -7,8 +7,10 @@
  const mathsPage=document.body.dataset.activity==='maths';
  const jasonHost=document.getElementById(mathsPage?'maths-cloud':'jason-roadmap');
  if(!['emily','jason'].includes(child))return;
+ let parentSettings=null;
+ if(child==='jason'&&!mathsPage){parentSettings=document.createElement('details');parentSettings.style.marginTop='12px';const summary=document.createElement('summary');summary.textContent='Parent settings';parentSettings.append(summary);document.querySelector?.('header')?.append(parentSettings)}
  if(child==='emily'){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='🌟 Keep My Stars Safe!';saveButton.style.cssText='margin:12px 0;padding:12px 18px;border-radius:12px;background:#d9f3e4;border:2px solid #39976e;font-weight:700';const status=document.createElement('p');status.id='emily-cloud-status';status.setAttribute('role','status');const hub=document.getElementById('hub');if(hub){hub.append(saveButton,status);saveButton.addEventListener('click',async()=>{saveButton.disabled=true;status.textContent='Saving…';const ok=await save();status.textContent=ok?'🎉 Your stars and answers are safe!':'Cloud save did not finish. Progress remains on this device.';saveButton.disabled=false})}}
- if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';jasonHost?.append(indicator);if(!mathsPage){const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load(true));jasonHost?.append(retry)}}
+ if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';(parentSettings||jasonHost)?.append(indicator)}
  let sha=null,cloudExists=false,jasonExtras={};
  const sessionKey='adventure-cloud-session-v1',deviceKey='adventure-cloud-device-v1';
  let pending=null,unlockPromise=null,remoteMaths=null,autoBusy=false,autoQueued=false;
@@ -233,7 +235,7 @@
  if(mathsPage){
    const manage=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Parent cloud controls';manage.append(summary,lock,forgetAll);controls.append(unlock,manage);
  }else controls.append(unlock,lock,forgetAll);
- (child==='emily'?document.getElementById('hub'):jasonHost)?.append(controls);
+ (child==='emily'?document.getElementById('hub'):(parentSettings||jasonHost))?.append(controls);
  async function unlockMaths(){
    try{if(await getSession(true))await autoSync()}catch(e){say('Cloud unlock failed: '+e.message)}
  }
