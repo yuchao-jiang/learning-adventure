@@ -14,7 +14,7 @@ const token = 'a'.repeat(64);
 async function setup(child, local, remote, options = {}) {
   const localStorage = options.localStorage || storage(local);
   const sessionStorage = options.sessionStorage || storage(options.locked ? {} : { [sessionKey]: JSON.stringify({ token, expiresAt: Date.now() + 100000, endpoint: 'https://sync.test' }) });
-  let reloads = 0; const writes = [], requests = [];
+  let reloads = 0; const writes = [], requests = [], scheduled=[],events={};
   const element = () => {
     const listeners = {}, password = { value: 'test-family-passphrase' }, remember = { checked: !!options.remember };
     return { style: {}, append() {}, setAttribute() {}, remove() {},
@@ -23,11 +23,12 @@ async function setup(child, local, remote, options = {}) {
       showModal() { this.returnValue = options.cancel ? 'cancel' : 'unlock'; listeners.close(); }
     };
   };
-  const window = { ADVENTURE_SYNC_URL: options.url || 'https://sync.test', addEventListener() {} };
-  const context = { AdventureMaths: require('../maths-progress.js'), window, localStorage, sessionStorage, document: { body: { dataset: { learner: child }, append() {} },
-    createElement: element, getElementById: element }, location: { reload() { reloads++; } },
-    setTimeout, clearTimeout, fetch: async (url, fetchOptions) => {
+  const window = { ADVENTURE_SYNC_URL: options.url || 'https://sync.test', addEventListener(name,callback) { events[name]=callback; } };
+  const context = { AdventureMaths: require('../maths-progress.js'), window, localStorage, sessionStorage, document: { body: { dataset: { learner: child, activity: options.mathsPage?'maths':'' }, append() {} },
+    createElement: element, getElementById: element,addEventListener(name,callback){events[name]=callback},visibilityState:'visible' }, location: { reload() { reloads++; } },
+    setTimeout:(fn)=>{scheduled.push(fn);return scheduled.length},clearTimeout(){},setInterval(){}, fetch: async (url, fetchOptions) => {
       requests.push({ url, method: fetchOptions.method, headers: fetchOptions.headers });
+      if(options.offline)throw Error('Offline');
       if(options.unauthorized)return {ok:false,status:401,json:async()=>({storage:'private-d1-v1',error:'Cloud session expired'})};
       if(url.endsWith('/session') || url.endsWith('/sessions'))return {ok:true,json:async()=>({storage:'private-d1-v1',token,expiresAt:Date.now()+30*86400000})};
       if (fetchOptions.method === 'POST') { writes.push(JSON.parse(fetchOptions.body)); return { ok: true, json: async () => ({ sha: 'new', storage: 'private-d1-v1' }) }; }
@@ -35,7 +36,7 @@ async function setup(child, local, remote, options = {}) {
     } };
   vm.runInNewContext(source, context);
   if (!options.locked) await window.adventureCloudLoad();
-  return { localStorage, sessionStorage, window, writes, requests, reloads: () => reloads };
+  return { localStorage, sessionStorage, window, writes, requests,events,scheduled, reloads: () => reloads };
 }
 test('remote Jason drafts cannot overwrite locally submitted answers', async () => {
   const app = await setup('jason', { 'jason-reading-v1': JSON.stringify({ '1-1': { answer: 'B' }, _submitted: { 1: { correct: 1 } } }) },
@@ -157,4 +158,22 @@ test('old reading-only cloud records keep local maths progress when saving', asy
  const app=await setup('jason', {'jason-maths-two-weeks-v1':JSON.stringify(maths)}, {answers:'{}',notes:{}});
  await app.window.adventureCloudSave();
  assert.equal(JSON.parse(app.writes[0].data.maths).session.answers[0],3);
+});
+
+const waitSync=async()=>{for(let i=0;i<30;i++)await new Promise(resolve=>setImmediate(resolve))};
+const mathsRecord=()=>JSON.stringify({history:[],session:{id:'auto-attempt',startedAt:100,updatedAt:101,week:1,ids:[0],phase:'solve',answers:{0:2},first:null,flagged:{},deadline:9999999999999}});
+test('maths automatically uploads existing local work on opening without a Save button',async()=>{
+ const app=await setup('jason',{'jason-maths-two-weeks-v1':mathsRecord()},{answers:'{}',notes:{}},{mathsPage:true});
+ await waitSync();assert.ok(app.writes.length>0);assert.equal(JSON.parse(app.writes.at(-1).data.maths).session.answers[0],2);
+});
+test('maths retries saved offline work when online again and reloads on focus',async()=>{
+ const options={mathsPage:true,offline:true};
+ const app=await setup('jason',{'jason-maths-two-weeks-v1':mathsRecord()},{answers:'{}',notes:{}},options);
+ await waitSync();assert.equal(app.writes.length,0);
+ options.offline=false;await app.events.online();await waitSync();assert.ok(app.writes.length>0);
+ const before=app.requests.length;await app.events.focus();await waitSync();assert.ok(app.requests.length>before);
+});
+test('locked maths pages never silently log in or upload work',async()=>{
+ const app=await setup('jason',{'jason-maths-two-weeks-v1':mathsRecord()},{answers:'{}',notes:{}},{mathsPage:true,locked:true});
+ await waitSync();await app.events.online();await waitSync();assert.equal(app.requests.length,0);
 });

@@ -8,10 +8,10 @@
  const jasonHost=document.getElementById(mathsPage?'maths-cloud':'jason-roadmap');
  if(!['emily','jason'].includes(child))return;
  if(child==='emily'){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='🌟 Keep My Stars Safe!';saveButton.style.cssText='margin:12px 0;padding:12px 18px;border-radius:12px;background:#d9f3e4;border:2px solid #39976e;font-weight:700';const status=document.createElement('p');status.id='emily-cloud-status';status.setAttribute('role','status');const hub=document.getElementById('hub');if(hub){hub.append(saveButton,status);saveButton.addEventListener('click',async()=>{saveButton.disabled=true;status.textContent='Saving…';const ok=await save();status.textContent=ok?'🎉 Your stars and answers are safe!':'Cloud save did not finish. Progress remains on this device.';saveButton.disabled=false})}}
- if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';jasonHost?.append(indicator);const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load(true));jasonHost?.append(retry)}
+ if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';jasonHost?.append(indicator);if(!mathsPage){const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Reload saved progress';retry.style.marginTop='8px';retry.addEventListener('click',()=>load(true));jasonHost?.append(retry)}}
  let sha=null,cloudExists=false,jasonExtras={};
  const sessionKey='adventure-cloud-session-v1',deviceKey='adventure-cloud-device-v1';
- let pending=null,unlockPromise=null;
+ let pending=null,unlockPromise=null,remoteMaths=null,autoBusy=false,autoQueued=false;
  // Discard credentials from the earlier passphrase-based client.
  try{sessionStorage.removeItem('adventure-family-passphrase-session-v2');sessionStorage.removeItem('adventure-family-pin-session')}catch{}
  const say=t=>{const indicator=document.getElementById('cloud-sync-status');if(indicator)indicator.textContent=t;const emily=document.getElementById('emily-cloud-status');if(emily)emily.textContent=t};
@@ -162,17 +162,18 @@
    return {changed:raw!==localRaw,completed:Object.values(answers).filter(v=>v?.checked===true).length};
  }
  async function load(interactive=false){
-   if(!url){say('Cloud connection is not configured.');return}
+   if(!url){say('Cloud connection is not configured.');return false}
    try{
      const session=await getSession(interactive);
      if(!session){say('Cloud progress is locked. Ask a parent to unlock it. Local work is available.');return false}
      const result=await request('GET',session);sha=result.sha||null;cloudExists=!!result.exists;
-     if(!result.exists){say('No cloud save yet.');return}
+     if(mathsPage)remoteMaths=result.exists&&typeof result.data?.data?.maths==='string'?AdventureMaths.stable(AdventureMaths.normalize(JSON.parse(result.data.data.maths))):null;
+     if(!result.exists){say('No cloud save yet.');return true}
      if(child==='jason'){
        const changed=mergeJason(result.data.data);
        say('🌈 Cloud progress synced.');
        if(changed&&!mathsPage)location.reload()
-       return;
+       return true;
      }
      const remoteData=result.data.data;
      const cupcakeChanged=mergeCupcake(remoteData.cupcake);
@@ -184,7 +185,7 @@
      }
      say('🌈 '+merged.completed+' completed answers ready across devices!');
      if(merged.changed||cupcakeChanged||parcelChanged)location.reload();
-   }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message}
+   }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message;return false}
  }
  let initialLoad;
  async function save(interactive=true){
@@ -203,34 +204,64 @@
      if(cloudExists&&child==='emily'&&typeof latest.data.data.cupcake==='string')mergeCupcake(latest.data.data.cupcake);
      if(cloudExists&&child==='emily')mergeParcel(latest.data.data.parcel);
      const result=await request('POST',session,snapshot());sha=result.sha;cloudExists=true;say('🌟 Progress saved to your private family storage.');return true;
-   }catch(e){say('Could not save: '+e.message);return false}
+   }catch(e){say((mathsPage?'Saved on this device. Cloud save failed: ':'Could not save: ')+e.message);return false}
  }
- if(child==='emily'||mathsPage){
-   window.addEventListener(mathsPage?'adventure-maths-changed':'adventure-progress-changed',()=>{
+ if(child==='emily'){
+   window.addEventListener('adventure-progress-changed',()=>{
      if(!storedSession())return;
      clearTimeout(pending);
      pending=setTimeout(()=>{if(storedSession())save(false).catch(()=>{});},1200);
    });
  }
  window.adventureCloudSave=save;
- window.adventureCloudLoad=()=>load(true);
+ window.adventureCloudLoad=()=>mathsPage?unlockMaths():load(true);
  window.adventureCloudLock=async()=>{
-   const session=storedSession();clearSession();clearTimeout(pending);
+   const session=storedSession();clearSession();clearTimeout(pending);if(mathsPage){unlock.hidden=false;lock.hidden=true}
    try{if(session)await api(url+'/session','DELETE',session);say('Cloud locked. This device is forgotten. Local work remains here.')}
    catch{say('This browser is locked, but server revocation did not finish. Ask a parent to retry Forget all trusted devices.')}
  };
  window.adventureCloudForgetAll=async()=>{
    if(!url)return;
    const consent=await parentConsent(false);if(!consent)return;
-   try{await api(url+'/sessions','DELETE',{passphrase:consent.passphrase});clearSession();clearTimeout(pending);say('All trusted devices are forgotten. Local work remains on each device.')}
+   try{await api(url+'/sessions','DELETE',{passphrase:consent.passphrase});clearSession();clearTimeout(pending);if(mathsPage){unlock.hidden=false;lock.hidden=true}say('All trusted devices are forgotten. Local work remains on each device.')}
    catch(e){say('Could not forget devices: '+e.message)}finally{consent.passphrase=''}
  };
  const controls=document.createElement('div');controls.className='actions';
- const unlock=document.createElement('button');unlock.type='button';unlock.textContent='🔐 Unlock private cloud progress';unlock.addEventListener('click',()=>load(true));
+ const unlock=document.createElement('button');unlock.type='button';unlock.textContent='🔐 Unlock private cloud progress';unlock.addEventListener('click',()=>mathsPage?unlockMaths():load(true));
  const lock=document.createElement('button');lock.type='button';lock.textContent='Lock cloud';lock.addEventListener('click',window.adventureCloudLock);
  const forgetAll=document.createElement('button');forgetAll.type='button';forgetAll.textContent='Forget all trusted devices';forgetAll.addEventListener('click',window.adventureCloudForgetAll);
- controls.append(unlock,lock,forgetAll);(child==='emily'?document.getElementById('hub'):jasonHost)?.append(controls);
- if(mathsPage){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='Save Maths progress';saveButton.addEventListener('click',async()=>{saveButton.disabled=true;try{await save()}finally{saveButton.disabled=false}});jasonHost?.append(saveButton)}
- initialLoad=load();
+ if(mathsPage){
+   const manage=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Parent cloud controls';manage.append(summary,lock,forgetAll);controls.append(unlock,manage);
+ }else controls.append(unlock,lock,forgetAll);
+ (child==='emily'?document.getElementById('hub'):jasonHost)?.append(controls);
+ async function unlockMaths(){
+   try{if(await getSession(true))await autoSync()}catch(e){say('Cloud unlock failed: '+e.message)}
+ }
+ async function autoSync(){
+   if(autoBusy){autoQueued=true;return}
+   await initialLoad;
+   if(autoBusy){autoQueued=true;return}
+   const unlocked=!!storedSession();unlock.hidden=unlocked;lock.hidden=!unlocked;
+   if(!url||!unlocked){say(!url?'Saved on this device. Cloud connection is not configured.':'Saved on this device. Ask a parent to unlock automatic cloud sync.');return}
+   autoBusy=true;autoQueued=false;
+   try{
+     if(!await load(false))return;
+     const raw=localStorage.getItem(AdventureMaths.KEY);
+     const local=raw===null?null:AdventureMaths.stable(AdventureMaths.normalize(JSON.parse(raw)));
+     if(local!==null&&local!==remoteMaths){say('Saved on this device. Syncing…');await save(false)}
+     else say('✓ All progress synced automatically.');
+   }catch(e){say('Saved on this device. Sync will retry: '+e.message)}
+   finally{autoBusy=false;unlock.hidden=!!storedSession();lock.hidden=!storedSession();if(autoQueued){clearTimeout(pending);pending=setTimeout(autoSync,1200)}}
+ }
+ initialLoad=mathsPage?Promise.resolve():load();
+ if(mathsPage){
+   window.addEventListener('adventure-maths-changed',()=>{
+     autoQueued=true;say(storedSession()?'Saved on this device. Syncing…':'Saved on this device. Cloud is locked.');
+     clearTimeout(pending);pending=setTimeout(autoSync,1200);
+   });
+   for(const event of ['focus','online'])window.addEventListener(event,autoSync);
+   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')autoSync()});
+   setInterval(()=>{if(document.visibilityState!=='hidden')autoSync()},30000);
+   autoSync();
+ }
 })();
-

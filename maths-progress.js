@@ -29,6 +29,33 @@
   }
   return {history:[...history.values()].sort((a,b)=>String(a.at||'').localeCompare(String(b.at||''))||stable(a).localeCompare(stable(b))),session:ordered.at(-1)||null,archivedSessions:ordered.slice(0,-1)};
  }
- const api={KEY,normalize,merge,stable};
+ function records(value){
+  const saved=normalize(value),rows=new Map();
+  for(const attempt of [...saved.archivedSessions,saved.session].filter(Boolean))rows.set(attempt.id,{key:attempt.id,attempt,summary:null,at:attempt.startedAt});
+  for(const summary of saved.history){
+   const key=summary.id||'summary-'+stable(summary);
+   if(rows.has(key)){rows.get(key).summary=summary;continue}
+   const hasAnswers=Array.isArray(summary.ids)&&object(summary.answers);
+   const at=Date.parse(summary.at)||0;
+   const attempt=hasAnswers?{id:key,week:summary.week,ids:summary.ids,phase:'done',answers:summary.answers,first:summary.firstAnswers||{},flagged:summary.flagged||{},startedAt:at,deadline:at,updatedAt:at}:null;
+   rows.set(key,{key,attempt,summary,at});
+  }
+  return [...rows.values()].sort((a,b)=>b.at-a.at||a.key.localeCompare(b.key));
+ }
+ function mistakes(value,questions){
+  const byQuestion=new Map();
+  for(const record of records(value).slice().reverse()){
+   const attempt=record.attempt;if(!attempt||attempt.phase!=='done')continue;
+   for(const id of attempt.ids){
+    const q=questions[id];if(!q)continue;
+    const first=attempt.first?.[id],answer=attempt.answers[id];
+    const occurrence={key:record.key,at:record.at,first,answer,firstWrong:first!==q.a,wrong:answer!==q.a};
+    if(!byQuestion.has(id))byQuestion.set(id,[]);
+    byQuestion.get(id).push(occurrence);
+   }
+  }
+  return [...byQuestion].filter(([,occurrences])=>occurrences.some(o=>o.firstWrong||o.wrong)).map(([id,occurrences])=>({id,occurrences,latest:occurrences.at(-1),needsPractice:occurrences.at(-1).wrong}));
+ }
+ const api={KEY,normalize,merge,stable,records,mistakes};
  root.AdventureMaths=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

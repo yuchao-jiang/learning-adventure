@@ -34,3 +34,19 @@ test('legacy attempts receive stable identities; malformed remote records are re
  assert.equal(normalize({session:old}).session.id,normalize({session:old}).session.id);
  for(const bad of [null,[],{history:{}},{session:attempt({ids:[999]})},{session:attempt({phase:'bad'})}])assert.throws(()=>normalize(bad));
 });
+test('records combine current, archived and detailed history without duplicating attempts',()=>{
+ const saved={session:attempt({id:'current'}),archivedSessions:[attempt({id:'old',phase:'done'})],history:[{id:'old',week:1,total:2,first:1,checked:2,at:'2026-11-01',ids:[0,1],answers:{0:2,1:1}}]};
+ const rows=require('../maths-progress.js').records(saved);
+ assert.equal(rows.length,2);assert.equal(rows.find(r=>r.key==='old').summary.checked,2);
+});
+test('legacy score-only attempts remain visible without inventing missing answers',()=>{
+ const rows=require('../maths-progress.js').records({history:[{week:1,total:8,first:6,checked:6,at:'2026-11-01'}]});
+ assert.equal(rows.length,1);assert.equal(rows[0].attempt,null);assert.equal(rows[0].summary.checked,6);
+});
+test('mistakes include unanswered and corrected questions; unfinished attempts are excluded',()=>{
+ const questions=[{a:2},{a:1}];
+ const saved={session:attempt({phase:'done',first:{0:0},answers:{0:2}})};
+ const rows=require('../maths-progress.js').mistakes(saved,questions);
+ assert.equal(rows.length,2);assert.equal(rows.find(r=>r.id===0).needsPractice,false);assert.equal(rows.find(r=>r.id===1).needsPractice,true);
+ assert.equal(require('../maths-progress.js').mistakes({session:attempt()},questions).length,0);
+});
