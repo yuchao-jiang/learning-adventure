@@ -152,3 +152,23 @@ test('mistakes book includes a wrong answer that was corrected during checking',
  assert.equal(app.run('AdventureMaths.mistakes(store,data).find(item=>item.id===0).needsPractice'),false);
  assert.equal(app.elements.get('mistakes-page').hidden,false);
 });
+test('parent question preview creates no attempt, score, or stored progress',()=>{
+ const app=setup();app.run('showParentPreview()');
+ assert.equal(app.run('store.session'),null);
+ assert.equal(app.storage.getItem('jason-maths-two-weeks-v1'),null);
+ assert.equal(app.elements.get('preview-page').hidden,false);
+ assert.equal(app.elements.get('preview-questions').children.length,8);
+});
+test('a parent preview is excluded from results and mistakes without deleting its record',()=>{
+ const app=setup();app.run('startSession();nextPhase();nextPhase();markParentPreview(store.session.id,true)');
+ assert.equal(app.run('AdventureMaths.records(store).length'),1);
+ assert.equal(app.run('AdventureMaths.records(store)[0].preview'),true);
+ assert.equal(app.run('AdventureMaths.mistakes(store,data).length'),0);
+ assert.equal(app.elements.get('practice').hidden,true);
+ assert.equal(app.elements.get('attempt-list').children.length,1); // empty-state message
+ app.run('document.getElementById("include-previews").checked=true;renderHistory()');
+ assert.equal(app.elements.get('attempt-list').children.length,1);
+ app.run('markParentPreview(store.session.id,false)');
+ assert.equal(app.run('AdventureMaths.records(store)[0].preview'),false);
+ assert.equal(app.elements.get('practice').hidden,false);
+});

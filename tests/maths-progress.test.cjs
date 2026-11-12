@@ -50,3 +50,13 @@ test('mistakes include unanswered and corrected questions; unfinished attempts a
  assert.equal(rows.length,2);assert.equal(rows.find(r=>r.id===0).needsPractice,false);assert.equal(rows.find(r=>r.id===1).needsPractice,true);
  assert.equal(require('../maths-progress.js').mistakes({session:attempt()},questions).length,0);
 });
+test('parent-preview classification survives stale cloud merges and can be reversed',()=>{
+ const source={session:attempt({phase:'done',answers:{0:0}})};
+ const tagged={...source,attemptTags:{a:{preview:true,updatedAt:100}}};
+ const merged=merge(tagged,source);
+ assert.equal(require('../maths-progress.js').records(merged)[0].preview,true);
+ assert.equal(require('../maths-progress.js').mistakes(merged,[{a:2},{a:1}]).length,0);
+ const restored=merge(merged,{...source,attemptTags:{a:{preview:false,updatedAt:200}}});
+ assert.equal(require('../maths-progress.js').records(restored)[0].preview,false);
+ assert.equal(require('../maths-progress.js').mistakes(restored,[{a:2},{a:1}]).length,2);
+});
