@@ -11,7 +11,7 @@ On a trusted computer, clone this repository and run the export script using the
 last commit that contains public progress:
 
 ```sh
-node scripts/export-private-progress.cjs d4e52e8cdccdd633bcbc10751d4644b7edea7feb
+node scripts/export-private-progress.cjs 2e28016eb85526041f064d9561a6dabe54f6c92c
 ```
 
 The script reads the two records from Git history and creates
@@ -107,3 +107,38 @@ revoked, and pre-passphrase-rotation tokens receive 401. Temporary tab tokens
 expire after 12 hours; remembered tokens expire after 30 days without extension.
 Run the updated schema before deploying the updated Worker. Keep the configured
 Worker URL at its root (no extra path).
+
+## Jason Maths syncing
+
+Maths uses the same authenticated Jason record as reading, in its `maths` field.
+No extra D1 table, learner login, or Worker change is required beyond the private
+Worker and schema above. Both `jason.html` and `jason-maths.html` must load
+`maths-progress.js` before `cloud-sync.js`.
+
+After private cloud setup, open the original browser/device where Jason did the
+maths. Unlock cloud access (or use its remembered-device session) and press
+**Save Maths progress**. That first save uploads existing on-device maths work.
+Then unlock another device and open Maths, or press **Reload saved progress**.
+Unsaved work still requires that first upload from the original device.
+
+Starts, selected answers, flags and solve/check/finish transitions autosave after
+about 1.2 seconds while unlocked. A Save button allows an immediate upload.
+Keep the page open until the cloud status confirms it saved, especially before
+switching devices. Locked/offline work remains on this device.
+
+The record includes active answers, first-attempt answers, checked answers,
+question IDs, scores, history, and the current phase/deadline. Timers keep their
+original wall-clock deadlines: syncing does not give extra time, and an expired
+timer advances using the existing maths timer rules when reopened.
+
+Same-attempt merges preserve completed work over unfinished drafts; otherwise
+the latest saved phase/revision wins. Separate attempts are retained in archived
+sessions instead of being discarded. Avoid simultaneous edits to the same
+attempt on two devices; timestamps depend on each device's clock. Existing
+legacy history contains only scores, so earlier answers cannot be reconstructed
+unless they remain in the saved session. New completed records retain actual
+first and checked answers for later parent review.
+
+Resetting maths on one device does not delete private cloud history; reloading
+cloud progress can restore it. Cloud saving uses the Worker's existing size
+limit and reports a failure rather than silently truncating long histories.

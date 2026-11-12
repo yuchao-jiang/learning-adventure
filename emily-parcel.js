@@ -1,0 +1,44 @@
+(function(){
+'use strict';
+const key='emily-parcel-v1';
+const questions=[
+ {scene:'A colourful parcel arrives at the animal rescue centre. The label reads: “For the new puppy. Open before the party!”',q:'Who is the parcel for?',options:['The new puppy','The postman','The kitten'],answer:0,hint:'Look for the words after “For”.',skill:'Reading for details'},
+ {scene:'Emily opens the parcel and finds a card from Biscuit. It says: “I am so exsited for the puppy party!” Emily spots one word that needs fixing.',q:'Which is the correct spelling of the word?',options:['exsited','excited','exited'],answer:1,hint:'The word means very happy and eager. Listen for the /k/ sound after the first two letters.',skill:'Spelling'},
+ {scene:'A note says: “Put the tiny red bow beside the large green box.”',q:'Which word means the opposite of “tiny”?',options:['Red','Large','Beside'],answer:1,hint:'Think of something that is very big.',skill:'Vocabulary'},
+ {scene:'There are 8 biscuits for the puppies. Two puppies each eat 2 biscuits.',q:'How many biscuits are left?',options:['2','4','6'],answer:1,hint:'How many were eaten in total?',skill:'Subtraction'},
+ {scene:'Emily finds a clue: “First find the star, then look under the table.”',q:'What should Emily do FIRST?',options:['Look under the table','Find the star','Open another parcel'],answer:1,hint:'The clue tells you the order.',skill:'Following instructions'},
+ {scene:'Biscuit is so excited! He keeps running to the door to see whether his friends have arrived. Emily looks at the party invitation: “Biscuit’s Puppy Party 🎈 — 2:00 PM. Don’t be late!”',q:'What time does the puppy party start?',options:['12 o’clock','2 o’clock','3 o’clock'],answer:1,hint:'Look carefully at the time on the invitation.',skill:'Reading time'},
+ {scene:'Biscuit wants to thank his friends for coming to his puppy party. He writes: “thank you for coming to my party i had so much fun.” Emily notices that Biscuit forgot two capital letters!',q:'Which sentence fixes both mistakes?',options:['Thank you for coming to my party i had so much fun.','Thank you for coming to my party. I had so much fun.','thank you for coming to my party. I had so much fun.'],answer:1,hint:'Look for where each sentence begins. Does each one start with a capital letter?',skill:'Proofreading and punctuation'},
+ {scene:'The final note says: “The surprise is behind the blue door.” Emily sees a red door and a blue door.',q:'Which door should she choose?',options:['The red door','The blue door','Either door'],answer:1,hint:'Read the colour in the clue.',skill:'Reading carefully'}
+];
+let state={step:0,solved:[],hints:[]};
+try{const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved&&Array.isArray(saved.solved))state={...state,...saved}}catch(e){}
+const $=id=>document.getElementById(id);
+function save(){localStorage.setItem(key,JSON.stringify(state));window.dispatchEvent(new Event('adventure-progress-changed'))}
+function render(){
+ const done=questions.filter((_,i)=>state.solved[i]).length;
+ $('parcel-stars').textContent='⭐'.repeat(done)||'☆';
+ $('parcel-status').textContent=done===questions.length?'✅ Adventure complete!':done?'Continue your adventure':'Start the adventure';
+ $('parcel-count').textContent=done+' of '+questions.length+' clues solved';
+ $('parcel-fill').style.width=(done/questions.length*100)+'%';
+ const area=$('parcel-question');area.replaceChildren();
+ $('parcel-feedback').textContent='';
+ $('parcel-next').hidden=true;
+ $('parcel-hint').hidden=false;
+ const step=Math.min(Number(state.step)||0,questions.length);
+ if(step===questions.length){const p=document.createElement('div');p.className='end';p.textContent='🎉 Surprise! The puppies have a party! You solved every clue. ⭐ Great work, Emily!';area.append(p);$('parcel-hint').hidden=true;return}
+ const q=questions[step],intro=document.createElement('p');intro.className='story';intro.style.padding='14px';intro.textContent=q.scene;area.append(intro);
+ const title=document.createElement('h3');title.textContent='Clue '+(step+1)+': '+q.q;area.append(title);
+ const choices=document.createElement('div');choices.className='choices';
+ q.options.forEach((option,i)=>{const b=document.createElement('button');b.type='button';b.textContent=option;b.disabled=!!state.solved[step];b.onclick=()=>{if(i===q.answer){state.solved[step]=true;save();render();$('parcel-feedback').textContent='🌟 You found the clue!';$('parcel-next').hidden=false}else{$('parcel-feedback').textContent='💛 Not quite. Read the clue and try again!'}};choices.append(b)});
+ area.append(choices);
+ if(state.solved[step]){$('parcel-feedback').textContent='🌟 You found the clue!';$('parcel-next').hidden=false}
+ $('parcel-hint').onclick=()=>{$('parcel-feedback').textContent='💡 '+q.hint};
+}
+$('parcel-open').onclick=()=>{['hub','worksheet-view','shop-view','cupcake-view'].forEach(id=>$(id).hidden=true);$('parcel-view').hidden=false;render();window.scrollTo({top:0,behavior:'smooth'})};
+$('parcel-back').onclick=()=>{$('parcel-view').hidden=true;$('hub').hidden=false};
+$('parcel-next').onclick=()=>{state.step=Math.min(questions.length,state.step+1);save();render()};
+$('parcel-save').onclick=async()=>{const ok=typeof window.adventureCloudSave==='function'&&await window.adventureCloudSave();$('parcel-save-status').textContent=ok?'🌈 Your clues are saved to the family cloud!':'Saved on this device. Cloud saving did not finish.'};
+window.addEventListener('storage',e=>{if(e.key===key){try{const fresh=JSON.parse(e.newValue);if(fresh&&Array.isArray(fresh.solved)){state=fresh;render()}}catch(e){}}});
+render();
+})();

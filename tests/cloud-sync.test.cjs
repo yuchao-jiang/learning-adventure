@@ -24,7 +24,7 @@ async function setup(child, local, remote, options = {}) {
     };
   };
   const window = { ADVENTURE_SYNC_URL: options.url || 'https://sync.test', addEventListener() {} };
-  const context = { window, localStorage, sessionStorage, document: { body: { dataset: { learner: child }, append() {} },
+  const context = { AdventureMaths: require('../maths-progress.js'), window, localStorage, sessionStorage, document: { body: { dataset: { learner: child }, append() {} },
     createElement: element, getElementById: element }, location: { reload() { reloads++; } },
     setTimeout, clearTimeout, fetch: async (url, fetchOptions) => {
       requests.push({ url, method: fetchOptions.method, headers: fetchOptions.headers });
@@ -142,4 +142,19 @@ test('forget all devices reauthenticates the parent without persisting the passp
  assert.equal(request.method, 'DELETE');
  assert.equal(request.headers['X-Family-Pin'], 'test-family-passphrase');
  assert.equal(app.sessionStorage.getItem(sessionKey), null);
+});
+
+test('reading-page saves preserve maths answers that exist only in the cloud', async () => {
+ const maths={history:[],session:{id:'cloud-attempt',startedAt:100,updatedAt:101,week:1,ids:[0],phase:'solve',answers:{0:2},first:null,flagged:{},deadline:Date.now()+600000}};
+ const app=await setup('jason', {}, {answers:'{}',notes:{},maths:JSON.stringify(maths)});
+ await app.window.adventureCloudSave();
+ const saved=JSON.parse(app.writes[0].data.maths);
+ assert.equal(saved.session.answers[0],2);
+ assert.equal(saved.session.id,'cloud-attempt');
+});
+test('old reading-only cloud records keep local maths progress when saving', async () => {
+ const maths={history:[],session:{id:'device-attempt',startedAt:100,updatedAt:101,week:1,ids:[0],phase:'solve',answers:{0:3},first:null,flagged:{},deadline:Date.now()+600000}};
+ const app=await setup('jason', {'jason-maths-two-weeks-v1':JSON.stringify(maths)}, {answers:'{}',notes:{}});
+ await app.window.adventureCloudSave();
+ assert.equal(JSON.parse(app.writes[0].data.maths).session.answers[0],3);
 });
