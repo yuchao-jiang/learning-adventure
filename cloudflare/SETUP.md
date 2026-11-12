@@ -141,3 +141,17 @@ Merges preserve completed work over drafts and retain independent attempts.
 Avoid simultaneous edits to the same attempt on two devices; timestamps depend
 on device clocks. Reset on one device does not delete private cloud history.
 Cloud saving reports size-limit failures rather than silently trimming history.
+
+## Parent previews
+
+Use **Parent: preview questions** on the Maths practice screen to inspect questions
+and optionally reveal their explanations. This view creates no session, timer,
+answers or scores. An already-running child practice keeps its original timer.
+
+If a parent previously started a recorded practice by mistake, open it in
+**All attempts** and choose **Mark as parent preview**. It is excluded from
+Jason's results, normal history list, roadmap status and mistakes book. The
+record is retained and its classification syncs privately. Enable **Include
+parent previews** to review it or choose **Count as Jason's attempt** to restore
+it. No actual 0/8 result is automatically excluded; the parent chooses which
+record was a preview.
