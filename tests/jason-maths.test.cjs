@@ -30,6 +30,8 @@ function setup(saved = {}) {
       append() {}, appendChild() {}
     }), createTextNode: v => v },
     localStorage: storage, confirm: () => true,
+    AdventureMaths: require('../maths-progress.js'),
+    crypto: require('node:crypto').webcrypto, Event, window: { dispatchEvent() {} },
     setInterval: () => 1, clearInterval: () => {},
     Date, Math, JSON, Object, String, Number, Array
   };
@@ -111,4 +113,27 @@ test('cube question has the correct answer without a runtime correction', () => 
   const app = setup();
   assert.equal(app.run('data.find(q=>q.topic==="3D shapes").o[data.find(q=>q.topic==="3D shapes").a]'), '40');
   assert.doesNotMatch(source, /data\[6\]\.o=/);
+});
+
+test('completed records keep actual first and checked answers for cloud review', () => {
+ const app=setup();app.run('startSession();store.session.answers[0]=2;nextPhase();store.session.answers[0]=1;nextPhase()');
+ const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
+ assert.equal(saved.history[0].firstAnswers[0],2);
+ assert.equal(saved.history[0].answers[0],1);
+ assert.equal(saved.history[0].id,saved.session.id);
+});
+test('cloud restoration renders an unfinished attempt with its original deadline', () => {
+ const app=setup();app.run('startSession()');
+ const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
+ saved.session.answers[0]=2;app.storage.setItem('jason-maths-two-weeks-v1',JSON.stringify(saved));
+ app.context.window.adventureMathsRestore();
+ assert.equal(app.run('store.session.answers[0]'),2);
+ assert.equal(app.run('store.session.deadline'),saved.session.deadline);
+});
+test('new practice archives the previous attempt instead of losing its answers', () => {
+ const app=setup();app.run('startSession();store.session.answers[0]=2;startSession()');
+ const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
+ assert.equal(saved.archivedSessions.length,1);
+ assert.equal(saved.archivedSessions[0].answers[0],2);
+ assert.notEqual(saved.archivedSessions[0].id,saved.session.id);
 });

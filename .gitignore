@@ -1,0 +1,7 @@
+.private-backup/
+.dev.vars
+.env
+.env.*
+.wrangler/
+node_modules/
+/data/*.json

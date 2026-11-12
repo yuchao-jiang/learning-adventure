@@ -1,17 +1,144 @@
-# One-time setup for family cloud saving
+# Private family progress — deployment and migration
 
-The website still saves locally until the Worker URL is configured. Do not put the PIN or GitHub token in public website files.
+The pages remain public. Learner records belong only in the private Cloudflare D1
+database, never in the website repository. This change is not active until the
+Worker is deployed. `cloud-config.js` intentionally starts with no endpoint so
+updated pages cannot save to the legacy public GitHub backend.
 
-1. In GitHub, create a **fine-grained personal access token** limited to repository `yuchao-jiang/learning-adventure`, with **Contents: Read and write** permission. Store it privately; never commit it.
-2. Sign in to Cloudflare, go to **Workers & Pages**, create a Worker, and paste/deploy the code from `cloudflare/worker.js`.
-3. In the Worker's **Settings → Variables and Secrets**, add encrypted secrets `GITHUB_TOKEN` (the token from step 1) and `FAMILY_PIN` (a private family PIN, preferably long and not reused elsewhere). Optionally set `ALLOWED_ORIGIN` to `https://yuchao-jiang.github.io`.
-4. Copy the Worker HTTPS URL (for example `https://your-worker.your-subdomain.workers.dev`) and edit `cloud-config.js`: `window.ADVENTURE_SYNC_URL = 'https://your-worker.your-subdomain.workers.dev';`.
-5. Wait for GitHub Pages to publish, then test with a nonessential answer: Save on device A and Continue on device B.
+## 1. Back up existing progress before removing public copies
 
-**Important:** A shared PIN alone does not provide strong protection against repeated guesses. Before regular use, configure Cloudflare rate limiting/WAF for the Worker (particularly POST requests), or use stronger authentication. The Worker never puts the GitHub token or PIN in public website code. JSON files under `data/` are public once saved. Every cloud save creates a GitHub commit. Avoid simultaneous edits: saving from one device after another may overwrite older progress; check before saving.
+On a trusted computer, clone this repository and run the export script using the
+last commit that contains public progress:
 
-Cloud loading automatically merges saved progress on both learner pages. Emily's
-completed answers and solved cupcake clues are preserved; Jason's submitted sets
-remain locked. The visible Save buttons publish local work, and Jason's
-“Reload saved progress” button retries loading. A concurrent cloud write is
-rejected when its SHA is stale, so load again before retrying.
+```sh
+node scripts/export-private-progress.cjs 2e28016eb85526041f064d9561a6dabe54f6c92c
+```
+
+The script reads the two records from Git history and creates
+`.private-backup/progress-backup.json` and `.private-backup/private-import.sql`.
+These are private files, excluded by `.gitignore`. Keep an additional secure
+backup. Do not upload them to GitHub, attach them to a PR, or paste them in chat.
+For a later migration, use the full commit SHA containing your latest public
+saves. Pause the legacy Worker first so no new saves are missed.
+
+## 2. Create private storage in Cloudflare
+
+1. Open **Storage & databases → D1 SQL Database**, create `learning-adventure-progress`.
+2. Open its SQL console and run the SQL from `cloudflare/schema.sql` to create
+   `progress`, `auth_attempts`, and `device_sessions`. If you already ran the old
+   schema, run the updated schema again; CREATE TABLE IF NOT EXISTS preserves records.
+3. Run the contents of the local `.private-backup/private-import.sql` in that
+   database's SQL console. It only inserts missing learners; it does not replace
+   existing private progress. Confirm there are two rows with
+   `SELECT child FROM progress;`. Do not publish query results containing answers.
+
+## 3. Replace the legacy Worker
+
+1. Open the existing `learning-adventure-sync` Worker. Pause access using
+   Cloudflare Access or temporarily disable its route while changing it; removing
+   the old GitHub token alone does not prevent public reads.
+2. Add a **D1 database binding** named `PROGRESS_DB` pointing to the database above.
+3. Add an encrypted secret named `FAMILY_PASSPHRASE`: use a unique, randomly
+   generated password or long random word phrase of 16–256 characters. A short
+   numeric PIN is no longer accepted. Enter it only in Cloudflare and the parent
+   unlock prompt on your HTTPS site; never in the repository or chat.
+4. Set `ALLOWED_ORIGIN` to `https://yuchao-jiang.github.io`.
+5. Replace the Worker source with `cloudflare/worker.js` and deploy it. Both GET
+   and POST require authentication, including requests with no Origin header.
+   Five incorrect attempts from a client in a minute block further attempts for
+   that minute. Database errors fail closed. Add Cloudflare WAF rate limiting
+   for protection against distributed attempts and traffic abuse as well.
+6. Remove `GITHUB_TOKEN`, `FAMILY_PIN`, and `REPO` from the Worker. Revoke the old
+   repository token in GitHub after verifying it is no longer needed elsewhere.
+   The new Worker makes no GitHub requests.
+
+## 4. Verify and reconnect the public pages
+
+- Open `https://<worker-url>/?child=emily` without credentials: it must return
+  401, with no learner records. Check Jason too. Repeat with a wrong passphrase.
+- Confirm an authenticated GET returns `storage: "private-d1-v1"` and your
+  imported progress. Never put the passphrase in a URL or shell history.
+- Set `window.ADVENTURE_SYNC_URL` in `cloud-config.js` to the deployed HTTPS
+  Worker URL and commit that public URL. There are no credentials in this file.
+- After GitHub Pages updates, choose **Unlock private cloud progress**, enter the
+  parent passphrase, and confirm progress on both learners before saving.
+- Make a nonessential change on one device, save, then unlock on another device.
+  Check that the progress synced and that no GitHub data commit was created.
+- Use **Lock cloud** to revoke this device token and remove its browser copy.
+  A parent can use **Forget all trusted devices** to revoke every session. Both
+  actions leave progress already on each device intact. Clear site data before
+  sharing a device.
+
+The shared passphrase unlocks both learners. The browser uses the parent passphrase only to create or revoke sessions; it is never
+saved in browser storage. By default an opaque token stays in tab sessionStorage
+for up to 12 hours. With the unchecked-by-default **Remember this trusted device
+for 30 days** option, a token stays in localStorage until its fixed 30-day expiry.
+The server stores only secret-bound token hashes, and rotating the parent
+passphrase invalidates existing tokens. Anyone using a remembered browser can access both learners until the token
+expires or is revoked. Choose this only on a family device. A stolen token grants
+cloud access until expiry/revocation; scripts on the same site can read browser
+storage. If a revocation request fails offline, the browser forgets its copy but
+the server token remains valid until expiry or a successful parent revocation. Local answers remain readable on the device, even while the cloud
+is locked. Private storage restricts public access; this is not end-to-end
+encryption and Cloudflare account administrators can access the records.
+
+## 5. Remove historic public copies
+
+This PR removes `data/emily.json` and `data/jason.json` from the current tree,
+and blocks accidental recommits of data JSON. Old commits still contain them.
+After checking the private migration, remove those paths from **all Git refs**
+with a reviewed `git-filter-repo` history rewrite and coordinate replacement of
+existing clones. GitHub cached views and PR references may require a GitHub
+Support removal request. Forks/downloaded copies cannot be recalled.
+
+Do not force-push rewritten history until the private backup and database are
+verified. Deleting the current files or making new commits alone is not erasure.
+
+## Trusted-device session endpoints
+
+The browser POSTs `{ "remember": true|false }` to `/session` with the parent
+passphrase in the `X-Family-Pin` header. The response supplies a random 256-bit
+bearer token and an absolute `expiresAt` timestamp. Reads and saves send that
+token via `Authorization: Bearer ...`, never in a URL. No passphrase is stored.
+
+DELETE `/session` with that bearer token revokes only that session. DELETE
+`/sessions` requires the parent passphrase and revokes every session. Expired,
+revoked, and pre-passphrase-rotation tokens receive 401. Temporary tab tokens
+expire after 12 hours; remembered tokens expire after 30 days without extension.
+Run the updated schema before deploying the updated Worker. Keep the configured
+Worker URL at its root (no extra path).
+
+## Jason Maths syncing
+
+Maths uses the same authenticated Jason record as reading, in its `maths` field.
+No extra D1 table, learner login, or Worker change is required beyond the private
+Worker and schema above. Both `jason.html` and `jason-maths.html` must load
+`maths-progress.js` before `cloud-sync.js`.
+
+After private cloud setup, open the original browser/device where Jason did the
+maths. Unlock cloud access (or use its remembered-device session) and press
+**Save Maths progress**. That first save uploads existing on-device maths work.
+Then unlock another device and open Maths, or press **Reload saved progress**.
+Unsaved work still requires that first upload from the original device.
+
+Starts, selected answers, flags and solve/check/finish transitions autosave after
+about 1.2 seconds while unlocked. A Save button allows an immediate upload.
+Keep the page open until the cloud status confirms it saved, especially before
+switching devices. Locked/offline work remains on this device.
+
+The record includes active answers, first-attempt answers, checked answers,
+question IDs, scores, history, and the current phase/deadline. Timers keep their
+original wall-clock deadlines: syncing does not give extra time, and an expired
+timer advances using the existing maths timer rules when reopened.
+
+Same-attempt merges preserve completed work over unfinished drafts; otherwise
+the latest saved phase/revision wins. Separate attempts are retained in archived
+sessions instead of being discarded. Avoid simultaneous edits to the same
+attempt on two devices; timestamps depend on each device's clock. Existing
+legacy history contains only scores, so earlier answers cannot be reconstructed
+unless they remain in the saved session. New completed records retain actual
+first and checked answers for later parent review.
+
+Resetting maths on one device does not delete private cloud history; reloading
+cloud progress can restore it. Cloud saving uses the Worker's existing size
+limit and reports a failure rather than silently truncating long histories.

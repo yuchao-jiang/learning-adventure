@@ -1,7 +1,7 @@
 # Saving progress
 
-The static app stores progress in this browser's `localStorage`. No backend,
-account, API key, or build step is required. Keep `persistence.js` alongside
+The static app stores progress in this browser's `localStorage`. No backend or build step is required for on-device progress. Optional cloud
+sync requires the private Worker described in cloudflare/SETUP.md. Keep `persistence.js` alongside
 `index.html` when publishing to GitHub Pages.
 
 Answers (including unfinished writing), checked activities, hints, and the
@@ -17,7 +17,9 @@ choice ranges. Existing `emily-adventure-v1` answers migrate automatically;
 the original key remains as a recovery copy. Malformed or unsupported documents
 are reported and replaced only on the next user change.
 
-Progress does not sync between devices, browsers, or site origins. Clearing site
+On-device storage alone does not sync between devices, browsers, or site origins.
+After private cloud setup, a parent can authenticate to load and save on another
+device. Clearing site
 data removes it; private browsing may discard it when the session closes. Avoid
 private information in writing answers on shared devices.
 
@@ -26,3 +28,4 @@ Run the persistence tests with Node.js 18 or newer:
 ```sh
 node --test persistence.test.cjs
 ```
+
