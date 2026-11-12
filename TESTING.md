@@ -17,6 +17,9 @@ No external dependencies are required. The suite covers:
 - Locked-browser behavior, cancelled unlocks and rejection of legacy public endpoints.
 - Remembered-device expiry, token hashing, per-device/all-device revocation and
   passphrase rotation; no stored parent passphrase.
+- Automatic maths upload on opening, retry after reconnect, locked-device behavior,
+  all-attempt review, legacy score-only results, and wrong/unanswered/corrected
+  mistakes-book entries.
 - Maths answer/deadline restoration, immutable completed attempts, independent
   attempt/history merging, first-versus-checked answers, and reading saves that
   preserve maths progress.

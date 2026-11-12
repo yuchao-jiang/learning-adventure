@@ -108,37 +108,36 @@ expire after 12 hours; remembered tokens expire after 30 days without extension.
 Run the updated schema before deploying the updated Worker. Keep the configured
 Worker URL at its root (no extra path).
 
-## Jason Maths syncing
+## Jason Maths syncing and review
 
 Maths uses the same authenticated Jason record as reading, in its `maths` field.
-No extra D1 table, learner login, or Worker change is required beyond the private
-Worker and schema above. Both `jason.html` and `jason-maths.html` must load
-`maths-progress.js` before `cloud-sync.js`.
+No extra D1 table or Worker deployment is needed for the history/mistakes-book
+update. Both Jason pages load `maths-progress.js` before `cloud-sync.js`.
 
-After private cloud setup, open the original browser/device where Jason did the
-maths. Unlock cloud access (or use its remembered-device session) and press
-**Save Maths progress**. That first save uploads existing on-device maths work.
-Then unlock another device and open Maths, or press **Reload saved progress**.
-Unsaved work still requires that first upload from the original device.
+On the original device, open Maths and unlock private cloud access. Existing
+local maths work uploads automatically. Starts, answers, flags and phase changes
+save to the device immediately and sync after about 1.2 seconds while unlocked.
+On other devices, saved work loads automatically on opening, returning to the
+page, reconnecting, and every 30 seconds while the page is visible. Failed saves
+remain local and retry on a later sync. Keep the page open until it reports that
+progress is synced before switching devices. There are no Maths Save/Reload
+buttons. Parents still control unlocking and forgetting trusted devices.
 
-Starts, selected answers, flags and solve/check/finish transitions autosave after
-about 1.2 seconds while unlocked. A Save button allows an immediate upload.
-Keep the page open until the cloud status confirms it saved, especially before
-switching devices. Locked/offline work remains on this device.
+**All attempts** lists every retained completed or unfinished practice, including
+archived sessions and legacy score-only results. Selecting an attempt is a
+read-only review; it does not replace, restart or reset the current practice.
+Completed attempts show first answers, checked answers, correct answers and
+explanations. Unfinished attempts show their saved answers. Their original
+wall-clock timers keep running while another page/view is open.
 
-The record includes active answers, first-attempt answers, checked answers,
-question IDs, scores, history, and the current phase/deadline. Timers keep their
-original wall-clock deadlines: syncing does not give extra time, and an expired
-timer advances using the existing maths timer rules when reopened.
+**错题本 · Mistakes book** collects wrong or unanswered questions from completed
+attempts, including first-answer mistakes corrected during checking. Each entry
+shows the latest saved answers and explanation, links to its attempts, and can
+be filtered to questions still needing practice. A later correct attempt updates
+its status without deleting its earlier records. Older score-only records stay
+visible but cannot provide missing answer details.
 
-Same-attempt merges preserve completed work over unfinished drafts; otherwise
-the latest saved phase/revision wins. Separate attempts are retained in archived
-sessions instead of being discarded. Avoid simultaneous edits to the same
-attempt on two devices; timestamps depend on each device's clock. Existing
-legacy history contains only scores, so earlier answers cannot be reconstructed
-unless they remain in the saved session. New completed records retain actual
-first and checked answers for later parent review.
-
-Resetting maths on one device does not delete private cloud history; reloading
-cloud progress can restore it. Cloud saving uses the Worker's existing size
-limit and reports a failure rather than silently truncating long histories.
+Merges preserve completed work over drafts and retain independent attempts.
+Avoid simultaneous edits to the same attempt on two devices; timestamps depend
+on device clocks. Reset on one device does not delete private cloud history.
+Cloud saving reports size-limit failures rather than silently trimming history.

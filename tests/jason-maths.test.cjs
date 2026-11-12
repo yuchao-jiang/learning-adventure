@@ -14,7 +14,7 @@ function setup(saved = {}) {
     assert.ok(html.includes('id="' + id + '"'), 'Page element exists: ' + id);
     if (!elements.has(id)) elements.set(id, {
       value: '1', textContent: '', innerHTML: '', hidden: false, disabled: false,
-      classList: { toggle() {} }, append() {}, appendChild() {}
+      classList: { toggle() {} }, children: [], setAttribute(k,v){this[k]=v}, replaceChildren(...items){this.children=items}, append(...items){this.children.push(...items)}, appendChild(item){this.children.push(item)}
     });
     return elements.get(id);
   }
@@ -27,7 +27,7 @@ function setup(saved = {}) {
   const context = {
     document: { getElementById: el, createElement: () => ({
       className: '', textContent: '', checked: false, disabled: false,
-      append() {}, appendChild() {}
+      children:[],setAttribute(k,v){this[k]=v},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items}
     }), createTextNode: v => v },
     localStorage: storage, confirm: () => true,
     AdventureMaths: require('../maths-progress.js'),
@@ -136,4 +136,19 @@ test('new practice archives the previous attempt instead of losing its answers',
  assert.equal(saved.archivedSessions.length,1);
  assert.equal(saved.archivedSessions[0].answers[0],2);
  assert.notEqual(saved.archivedSessions[0].id,saved.session.id);
+});
+
+test('All attempts includes more than five attempts and reviewing never changes current work', () => {
+ const app=setup();for(let i=0;i<7;i++)app.run('startSession();store.session.answers[0]=2;persist()');
+ const current=app.run('store.session.id'), count=app.run('AdventureMaths.records(store).length');
+ assert.equal(count,7);
+ app.run('reviewKey=AdventureMaths.records(store).find(r=>r.key!==store.session.id).key;showMathsView("history")');
+ assert.equal(app.run('store.session.id'),current);
+ assert.equal(app.elements.get('attempt-list').children.length,7);
+ assert.equal(app.elements.get('history-page').hidden,false);
+});
+test('mistakes book includes a wrong answer that was corrected during checking', () => {
+ const app=setup();app.run('startSession();store.session.answers[0]=0;nextPhase();store.session.answers[0]=data[0].a;nextPhase();showMathsView("mistakes")');
+ assert.equal(app.run('AdventureMaths.mistakes(store,data).find(item=>item.id===0).needsPractice'),false);
+ assert.equal(app.elements.get('mistakes-page').hidden,false);
 });
