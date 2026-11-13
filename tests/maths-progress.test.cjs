@@ -60,3 +60,14 @@ test('parent-preview classification survives stale cloud merges and can be rever
  assert.equal(require('../maths-progress.js').records(restored)[0].preview,false);
  assert.equal(require('../maths-progress.js').mistakes(restored,[{a:2},{a:1}]).length,2);
 });
+
+test('two practice parts cover every new question once and recognize saved attempts',()=>{
+ const {parts,partForIds,nextPart}=require('../maths-progress.js');
+ assert.deepEqual(parts.map(part=>part.ids.length),[4,5]);
+ assert.deepEqual(parts.flatMap(part=>part.ids),[12,13,14,15,16,17,18,19,20]);
+ assert.equal(partForIds(parts[1].ids).id,'part-2');
+ const first={session:attempt({ids:parts[0].ids,phase:'done'})};
+ assert.equal(nextPart(first),'part-2');
+ first.attemptTags={a:{preview:true,updatedAt:1}};
+ assert.equal(nextPart(first),'part-1');
+});

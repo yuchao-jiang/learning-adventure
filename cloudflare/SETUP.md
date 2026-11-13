@@ -156,16 +156,15 @@ uses that existing credential for automatic sync. If access expires or the
 device is offline, work remains saved locally; its status says Saved on this
 device. A parent can return to roadmap settings to restore private access.
 
-Jason has one new-practice mode: **Careful Thinker**, with 8 questions,
-15 minutes to solve and 3 minutes to check. Questions can be flagged or unflagged
-during either phase. Flags save and sync with the attempt and remain in review.
-Existing Smart Explorer work retains its original questions, timer and history;
-only newly started practices use Careful Thinker.
+Jason uses **Careful Thinker**, split into the two shorter practices below.
+Questions can be flagged or unflagged during either phase. Flags save and sync
+with the attempt and remain in review. Existing Smart Explorer work retains
+its original questions, timer and history.
 
 ## Next question set: photographed questions 27–35
 
-New Careful Thinker practices now use all nine supplied questions, with 20
-minutes to answer and the existing 3 minutes to check. Flags work in both phases.
+The photographed bank contains all nine supplied questions, split into the two
+shorter practices below. Flags work in both solving and checking phases.
 The original twelve questions retain indices 0–11; the new set is appended at
 12–20. Existing sessions and historical answers therefore keep their original
 questions and deadlines. New questions, diagrams and explanations live in
@@ -174,3 +173,14 @@ questions and deadlines. New questions, diagrams and explanations live in
 A practice already in progress continues as before. After finishing it, **Start
 a new practice** starts the photographed set. No Worker/schema change is needed;
 private syncing accepts the new question IDs and preserves old history.
+
+## Two shorter practices
+
+The photographed questions are split into **Part 1** (27–30, four questions) and
+**Part 2** (31–35, five questions). Each has 12 minutes to answer and 3 minutes to
+check. Both belong to Careful Thinker; they are not separate difficulty modes.
+Part 1 is recommended first; completing it selects Part 2 without starting a new
+timer until Jason presses Start. Either part can be selected and repeated.
+History names include the part, and both parts keep flags, explanations, mistakes
+and automatic saving. Existing nine-question attempts retain their original
+questions and deadline if any were started before this change.

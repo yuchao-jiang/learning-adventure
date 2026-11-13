@@ -58,13 +58,13 @@ test('question bank has valid answer indices and unique options', () => {
   }
 });
 
-test('Careful Thinker starts with the nine new questions and 20 minutes', () => {
+test('Careful Thinker starts Part 1 with four questions and 12 minutes', () => {
   const app = setup();
   app.run('startSession()');
   const session = JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1')).session;
-  assert.equal(session.ids.length, 9);
+  assert.equal(session.ids.length, 4);
   assert.equal(session.phase, 'solve');
-  assert.ok(session.deadline - Date.now() > 19 * 60000);
+  assert.ok(session.deadline - Date.now() > 11 * 60000);
 });
 
 test('existing Smart Explorer sessions still restore with their original questions and timer', () => {
@@ -92,7 +92,7 @@ test('finishing saves separate first-attempt and checked scores', () => {
   app.run('nextPhase();nextPhase()');
   const saved = JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
   assert.equal(saved.history.length, 1);
-  assert.equal(saved.history[0].total, 9);
+  assert.equal(saved.history[0].total, 4);
   assert.equal(saved.session.phase, 'done');
 });
 
@@ -177,4 +177,27 @@ test('Careful Thinker allows flagging in solving and checking and retains flags 
  const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
  assert.equal(saved.session.flagged[12],true);
  assert.equal(saved.history[0].flagged[12],true);
+});
+
+test('Part 2 starts exactly the remaining five questions with 12 minutes',()=>{
+ const app=setup();app.run('choosePart("part-2");startSession()');
+ const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
+ assert.deepEqual(saved.session.ids,[16,17,18,19,20]);
+ assert.ok(saved.session.deadline-Date.now()>11*60000);
+});
+test('finishing Part 1 recommends Part 2 without starting it or losing Part 1',()=>{
+ const app=setup();app.run('startSession();store.session.answers[12]=2;nextPhase();nextPhase()');
+ assert.equal(app.run('selectedPart'),'part-2');
+ assert.equal(app.run('store.session.phase'),'done');
+ app.run('startSession()');
+ assert.equal(app.run('store.session.ids.length'),5);
+ assert.equal(app.run('store.archivedSessions[0].answers[12]'),2);
+});
+test('an existing nine-question practice keeps its questions and original deadline',()=>{
+ const deadline=Date.now()+20*60000;
+ const record={history:[],session:{id:'full-set',week:1,ids:[12,13,14,15,16,17,18,19,20],startedAt:Date.now(),updatedAt:Date.now(),answers:{12:2},first:null,flagged:{},phase:'solve',deadline}};
+ const app=setup({'jason-maths-two-weeks-v1':JSON.stringify(record)});
+ assert.equal(app.run('store.session.ids.length'),9);
+ assert.equal(app.run('store.session.deadline'),deadline);
+ assert.equal(app.run('store.session.answers[12]'),2);
 });
