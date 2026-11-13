@@ -155,3 +155,9 @@ the Maths page. Unlock or remember a family device there. The Maths page quietly
 uses that existing credential for automatic sync. If access expires or the
 device is offline, work remains saved locally; its status says Saved on this
 device. A parent can return to roadmap settings to restore private access.
+
+Jason has one new-practice mode: **Careful Thinker**, with 8 questions,
+15 minutes to solve and 3 minutes to check. Questions can be flagged or unflagged
+during either phase. Flags save and sync with the attempt and remain in review.
+Existing Smart Explorer work retains its original questions, timer and history;
+only newly started practices use Careful Thinker.

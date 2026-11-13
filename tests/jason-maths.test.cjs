@@ -42,7 +42,7 @@ function setup(saved = {}) {
 
 test('missions have child-friendly labels and checking instructions', () => {
   assert.match(html, /Careful Thinker/);
-  assert.match(html, /Smart Explorer/);
+  assert.doesNotMatch(html, /<option[^>]*>[^<]*Smart Explorer|Choose a maths mission/);
   assert.match(html, /3 minutes/);
   assert.doesNotMatch(html, /Week 1 · Accuracy|Week 2 · Pacing/);
 });
@@ -67,13 +67,13 @@ test('Careful Thinker starts with eight questions and 15 minutes', () => {
   assert.ok(session.deadline - Date.now() > 14 * 60000);
 });
 
-test('Smart Explorer starts with ten questions and 18 minutes', () => {
-  const app = setup();
-  app.elements.get('week').value = '2';
-  app.run('startSession()');
-  const session = JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1')).session;
-  assert.equal(session.ids.length, 10);
-  assert.ok(session.deadline - Date.now() > 17 * 60000);
+test('existing Smart Explorer sessions still restore with their original questions and timer', () => {
+  const deadline=Date.now()+18*60000;
+  const saved={session:{id:'legacy-smart',startedAt:Date.now(),updatedAt:Date.now(),week:2,ids:Array.from({length:10},(_,i)=>i),answers:{},first:null,flagged:{},phase:'solve',deadline},history:[]};
+  const app=setup({'jason-maths-two-weeks-v1':JSON.stringify(saved)});
+  assert.equal(app.run('store.session.week'),2);
+  assert.equal(app.run('store.session.ids.length'),10);
+  assert.equal(app.run('store.session.deadline'),deadline);
 });
 
 test('checking captures original answers and starts a three-minute timer', () => {
@@ -96,9 +96,9 @@ test('finishing saves separate first-attempt and checked scores', () => {
   assert.equal(saved.session.phase, 'done');
 });
 
-test('mission selection keeps an accessible name without redundant instructions', () => {
-  assert.match(html, /<select aria-label="Choose a maths mission" id="week"/);
-  assert.doesNotMatch(html, /Choose a mission:|Start with Careful Thinker\./);
+test('there is one Careful Thinker mission and no mission selector', () => {
+  assert.match(html, /<h2>🎯 Careful Thinker<\/h2>/);
+  assert.doesNotMatch(html, /id="week"|chooseWeek\(|Pick a mission/);
 });
 
 test('cube question has the correct answer without a runtime correction', () => {
@@ -166,4 +166,15 @@ test('active practice hides the mission chooser and completed work offers child 
  assert.equal(app.elements.get('mission-choice').hidden,false);
  assert.equal(app.elements.get('answers-box').hidden,false);
  assert.ok(app.elements.get('answers-review').children.length>0);
+});
+
+test('Careful Thinker allows flagging in solving and checking and retains flags when finished',()=>{
+ const app=setup();app.run('startSession()');
+ assert.equal(app.run('store.session.week'),1);
+ assert.match(source,/if\(session.phase!=="done"\)/);
+ assert.match(source,/Flag question /);
+ app.run('store.session.flagged[0]=true;persist();nextPhase();nextPhase()');
+ const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
+ assert.equal(saved.session.flagged[0],true);
+ assert.equal(saved.history[0].flagged[0],true);
 });
