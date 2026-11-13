@@ -14,7 +14,7 @@ function setup(saved = {}) {
     assert.ok(html.includes('id="' + id + '"'), 'Page element exists: ' + id);
     if (!elements.has(id)) elements.set(id, {
       value: '1', textContent: '', innerHTML: '', hidden: false, disabled: false,
-      classList: { toggle() {} }, children: [], setAttribute(k,v){this[k]=v}, replaceChildren(...items){this.children=items}, append(...items){this.children.push(...items)}, appendChild(item){this.children.push(item)}
+      classList: { toggle() {} }, children: [], style:{},prepend(item){this.children.unshift(item)},setAttribute(k,v){this[k]=v}, replaceChildren(...items){this.children=items}, append(...items){this.children.push(...items)}, appendChild(item){this.children.push(item)}
     });
     return elements.get(id);
   }
@@ -27,10 +27,10 @@ function setup(saved = {}) {
   const context = {
     document: { getElementById: el, createElement: () => ({
       className: '', textContent: '', checked: false, disabled: false,
-      children:[],setAttribute(k,v){this[k]=v},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items}
+      children:[],style:{},prepend(item){this.children.unshift(item)},setAttribute(k,v){this[k]=v},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items}
     }), createTextNode: v => v },
     localStorage: storage, confirm: () => true,
-    AdventureMaths: require('../maths-progress.js'),
+    AdventureMaths: require('../maths-progress.js'),AdventureNextSet:require('../maths-next-set.js'),
     crypto: require('node:crypto').webcrypto, Event, window: { dispatchEvent() {} },
     setInterval: () => 1, clearInterval: () => {},
     Date, Math, JSON, Object, String, Number, Array
@@ -58,13 +58,13 @@ test('question bank has valid answer indices and unique options', () => {
   }
 });
 
-test('Careful Thinker starts with eight questions and 15 minutes', () => {
+test('Careful Thinker starts with the nine new questions and 20 minutes', () => {
   const app = setup();
   app.run('startSession()');
   const session = JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1')).session;
-  assert.equal(session.ids.length, 8);
+  assert.equal(session.ids.length, 9);
   assert.equal(session.phase, 'solve');
-  assert.ok(session.deadline - Date.now() > 14 * 60000);
+  assert.ok(session.deadline - Date.now() > 19 * 60000);
 });
 
 test('existing Smart Explorer sessions still restore with their original questions and timer', () => {
@@ -79,10 +79,10 @@ test('existing Smart Explorer sessions still restore with their original questio
 test('checking captures original answers and starts a three-minute timer', () => {
   const app = setup();
   app.run('startSession()');
-  app.run('store.session.answers[0]=2;nextPhase()');
+  app.run('store.session.answers[12]=2;nextPhase()');
   const session = JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1')).session;
   assert.equal(session.phase, 'check');
-  assert.equal(session.first[0], 2);
+  assert.equal(session.first[12], 2);
   assert.ok(session.deadline - Date.now() > 2 * 60000);
 });
 
@@ -92,7 +92,7 @@ test('finishing saves separate first-attempt and checked scores', () => {
   app.run('nextPhase();nextPhase()');
   const saved = JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
   assert.equal(saved.history.length, 1);
-  assert.equal(saved.history[0].total, 8);
+  assert.equal(saved.history[0].total, 9);
   assert.equal(saved.session.phase, 'done');
 });
 
@@ -108,30 +108,30 @@ test('cube question has the correct answer without a runtime correction', () => 
 });
 
 test('completed records keep actual first and checked answers for cloud review', () => {
- const app=setup();app.run('startSession();store.session.answers[0]=2;nextPhase();store.session.answers[0]=1;nextPhase()');
+ const app=setup();app.run('startSession();store.session.answers[12]=2;nextPhase();store.session.answers[12]=1;nextPhase()');
  const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
- assert.equal(saved.history[0].firstAnswers[0],2);
- assert.equal(saved.history[0].answers[0],1);
+ assert.equal(saved.history[0].firstAnswers[12],2);
+ assert.equal(saved.history[0].answers[12],1);
  assert.equal(saved.history[0].id,saved.session.id);
 });
 test('cloud restoration renders an unfinished attempt with its original deadline', () => {
  const app=setup();app.run('startSession()');
  const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
- saved.session.answers[0]=2;app.storage.setItem('jason-maths-two-weeks-v1',JSON.stringify(saved));
+ saved.session.answers[12]=2;app.storage.setItem('jason-maths-two-weeks-v1',JSON.stringify(saved));
  app.context.window.adventureMathsRestore();
- assert.equal(app.run('store.session.answers[0]'),2);
+ assert.equal(app.run('store.session.answers[12]'),2);
  assert.equal(app.run('store.session.deadline'),saved.session.deadline);
 });
 test('new practice archives the previous attempt instead of losing its answers', () => {
- const app=setup();app.run('startSession();store.session.answers[0]=2;startSession()');
+ const app=setup();app.run('startSession();store.session.answers[12]=2;startSession()');
  const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
  assert.equal(saved.archivedSessions.length,1);
- assert.equal(saved.archivedSessions[0].answers[0],2);
+ assert.equal(saved.archivedSessions[0].answers[12],2);
  assert.notEqual(saved.archivedSessions[0].id,saved.session.id);
 });
 
 test('All attempts includes more than five attempts and reviewing never changes current work', () => {
- const app=setup();for(let i=0;i<7;i++)app.run('startSession();store.session.answers[0]=2;persist()');
+ const app=setup();for(let i=0;i<7;i++)app.run('startSession();store.session.answers[12]=2;persist()');
  const current=app.run('store.session.id'), count=app.run('AdventureMaths.records(store).length');
  assert.equal(count,7);
  app.run('reviewKey=AdventureMaths.records(store).find(r=>r.key!==store.session.id).key;showMathsView("history")');
@@ -140,8 +140,8 @@ test('All attempts includes more than five attempts and reviewing never changes 
  assert.equal(app.elements.get('history-page').hidden,false);
 });
 test('mistakes book includes a wrong answer that was corrected during checking', () => {
- const app=setup();app.run('startSession();store.session.answers[0]=0;nextPhase();store.session.answers[0]=data[0].a;nextPhase();showMathsView("mistakes")');
- assert.equal(app.run('AdventureMaths.mistakes(store,data).find(item=>item.id===0).needsPractice'),false);
+ const app=setup();app.run('startSession();store.session.answers[12]=0;nextPhase();store.session.answers[12]=data[12].a;nextPhase();showMathsView("mistakes")');
+ assert.equal(app.run('AdventureMaths.mistakes(store,data).find(item=>item.id===12).needsPractice'),false);
  assert.equal(app.elements.get('mistakes-page').hidden,false);
 });
 test('child maths page has no parent, preview, classification or reset controls',()=>{
@@ -173,8 +173,8 @@ test('Careful Thinker allows flagging in solving and checking and retains flags 
  assert.equal(app.run('store.session.week'),1);
  assert.match(source,/if\(session.phase!=="done"\)/);
  assert.match(source,/Flag question /);
- app.run('store.session.flagged[0]=true;persist();nextPhase();nextPhase()');
+ app.run('store.session.flagged[12]=true;persist();nextPhase();nextPhase()');
  const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
- assert.equal(saved.session.flagged[0],true);
- assert.equal(saved.history[0].flagged[0],true);
+ assert.equal(saved.session.flagged[12],true);
+ assert.equal(saved.history[0].flagged[12],true);
 });

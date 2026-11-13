@@ -161,3 +161,16 @@ Jason has one new-practice mode: **Careful Thinker**, with 8 questions,
 during either phase. Flags save and sync with the attempt and remain in review.
 Existing Smart Explorer work retains its original questions, timer and history;
 only newly started practices use Careful Thinker.
+
+## Next question set: photographed questions 27–35
+
+New Careful Thinker practices now use all nine supplied questions, with 20
+minutes to answer and the existing 3 minutes to check. Flags work in both phases.
+The original twelve questions retain indices 0–11; the new set is appended at
+12–20. Existing sessions and historical answers therefore keep their original
+questions and deadlines. New questions, diagrams and explanations live in
+`maths-next-set.js`, which must load before the Maths page script.
+
+A practice already in progress continues as before. After finishing it, **Start
+a new practice** starts the photographed set. No Worker/schema change is needed;
+private syncing accepts the new question IDs and preserves old history.

@@ -31,3 +31,9 @@ No external dependencies are required. The suite covers:
 
 Cloud tests use mock requests and storage; they never write to GitHub or Cloudflare.
 GitHub Actions runs the full suite on pushes and pull requests.
+
+The supplied next set (27–35) has independent checks for graph claims,
+unit-cube exposed faces, strawberry sharing, perimeter changes, point costs,
+probability counts and available ruler gaps, plus folding-option area and
+legacy/new question-ID compatibility checks. Its first new practice uses all
+nine questions with a 20-minute answering deadline and 3-minute checking phase.
