@@ -21,10 +21,19 @@
  // Emily's persistence library stores versioned data; use its own storage key.
  function snapshot(){
    if(child==='emily'){
-     return {storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1')};
+     return {storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1'),rainbow:localStorage.getItem('emily-rainbow-v1')};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
    return {...jasonExtras,answers:localStorage.getItem('jason-reading-v1')||'{}',notes,...(localStorage.getItem(AdventureMaths.KEY)!==null?{maths:localStorage.getItem(AdventureMaths.KEY)}:{})};
+ }
+ function mergeRainbow(raw){
+   if(typeof raw!=='string')return false;
+   let remote,local;try{remote=JSON.parse(raw);local=JSON.parse(localStorage.getItem('emily-rainbow-v1')||'{}')}catch{return false}
+   if(!remote||!Array.isArray(remote.solved))return false;
+   let merged;
+   if(remote.attemptId&&local.attemptId&&remote.attemptId!==local.attemptId)merged=(remote.updatedAt||0)>(local.updatedAt||0)?remote:local;
+   else{const solved=Array.from({length:6},(_,i)=>!!(remote.solved[i]||local.solved?.[i]));let step=0;while(step<6&&solved[step])step++;merged={...remote,...local,solved,step,hints:Array.from({length:6},(_,i)=>!!(remote.hints?.[i]||local.hints?.[i])),updatedAt:Math.max(remote.updatedAt||0,local.updatedAt||0)}}
+   const value=JSON.stringify(merged),changed=value!==JSON.stringify(local);if(changed)localStorage.setItem('emily-rainbow-v1',value);return changed;
  }
  function mergeCupcake(remoteRaw){
    if(typeof remoteRaw!=='string')return false;
@@ -155,7 +164,9 @@
    const answers={...remote.answers,...(local.answers||{})};
    // A completed answer must never be replaced by an unfinished answer.
    for(const [id,entry] of Object.entries(remote.answers)){
-     if(entry&&entry.checked===true&&!(local.answers||{})[id]?.checked)answers[id]=entry;
+     const own=(local.answers||{})[id];
+     if((entry?.updatedAt||0)||(own?.updatedAt||0)){if((entry?.updatedAt||0)>(own?.updatedAt||0))answers[id]=entry}
+     else if(entry&&entry.checked===true&&!own?.checked)answers[id]=entry;
    }
    const merged={version:2,tab:local.tab||remote.tab||'english',answers};
    const raw=JSON.stringify(merged);
@@ -168,6 +179,7 @@
    try{
      const session=await getSession(interactive);
      if(!session){say('Cloud progress is locked. Ask a parent to unlock it. Local work is available.');return false}
+     window.AdventureHistory?.sync();
      const result=await request('GET',session);sha=result.sha||null;cloudExists=!!result.exists;
      if(mathsPage)remoteMaths=result.exists&&typeof result.data?.data?.maths==='string'?AdventureMaths.stable(AdventureMaths.normalize(JSON.parse(result.data.data.maths))):null;
      if(!result.exists){say('No cloud save yet.');return true}
@@ -180,12 +192,13 @@
      const remoteData=result.data.data;
      const cupcakeChanged=mergeCupcake(remoteData.cupcake);
      const parcelChanged=mergeParcel(remoteData.parcel);
-     if(typeof remoteData.raw!=='string')throw Error('No saved English or Maths answers found');
-     const merged=mergeEmily(remoteData.raw);
+     const rainbowChanged=mergeRainbow(remoteData.rainbow);
+     const merged=typeof remoteData.raw==='string'?mergeEmily(remoteData.raw):{changed:false,completed:0};
      if(typeof remoteData.shop==='string'){
        try{const remoteShop=JSON.parse(remoteData.shop),localShop=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remoteShop,...localShop}))}catch(e){}
      }
      say('🌈 '+merged.completed+' completed answers ready across devices!');
+     if(rainbowChanged&&typeof window.adventureRainbowRestore==='function')window.adventureRainbowRestore();
      if(merged.changed||cupcakeChanged||parcelChanged)location.reload();
    }catch(e){say('Cloud load failed: '+e.message);if(child==='jason')window.adventureSyncError=e.message;return false}
  }
@@ -204,8 +217,8 @@
        try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remote,...own}))}catch(e){}
      }
      if(cloudExists&&child==='emily'&&typeof latest.data.data.cupcake==='string')mergeCupcake(latest.data.data.cupcake);
-     if(cloudExists&&child==='emily')mergeParcel(latest.data.data.parcel);
-     const result=await request('POST',session,snapshot());sha=result.sha;cloudExists=true;say('🌟 Progress saved to your private family storage.');return true;
+     if(cloudExists&&child==='emily'){mergeParcel(latest.data.data.parcel);mergeRainbow(latest.data.data.rainbow)}
+     const result=await request('POST',session,snapshot());sha=result.sha;cloudExists=true;window.AdventureHistory?.sync();say('🌟 Progress saved to your private family storage.');return true;
    }catch(e){say((mathsPage?'Saved on this device. Cloud save failed: ':'Could not save: ')+e.message);return false}
  }
  if(child==='emily'){
@@ -233,6 +246,7 @@
  const lock=document.createElement('button');lock.type='button';lock.textContent='Lock cloud';lock.addEventListener('click',window.adventureCloudLock);
  const forgetAll=document.createElement('button');forgetAll.type='button';forgetAll.textContent='Forget all trusted devices';forgetAll.addEventListener('click',window.adventureCloudForgetAll);
  controls.append(unlock,lock,forgetAll);
+ const review=document.createElement('a');review.href='./learning-review.html';review.textContent='Private learning review';controls.append(review);
  if(!mathsPage)(child==='emily'?document.getElementById('hub'):(parentSettings||jasonHost))?.append(controls);
  async function autoSync(){
    if(autoBusy){autoQueued=true;return}

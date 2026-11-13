@@ -39,3 +39,10 @@ legacy/new question-ID compatibility checks. New practices split those
 nine questions into parts of four and five, each with a 12-minute answering
 deadline and 3-minute checking phase. Tests cover coverage without duplication,
 part selection/recommendation, and preservation of earlier nine-question work.
+
+Private learning-history checks cover original answers, revisions, writing
+submissions, explicit legacy imports, independent tabs, offline retry, private
+API authentication, immutable/idempotent inserts, learner isolation and pagination.
+Rainbow snapshot tests cover restoration and restarting without resurrecting old
+completion. Browser smoke checks exercise Jason answer changes/flags/phase timing,
+Emily answer reopening and writing changes, Rainbow recording and parent review.

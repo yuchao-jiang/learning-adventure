@@ -18,6 +18,7 @@
         if (valid) entry.value = source.value;
         entry.checked = valid && String(source.value).trim() !== '' && source.checked === true;
         entry.hint = source.hint === true;
+        if (Number.isFinite(source.updatedAt) && source.updatedAt > 0) entry.updatedAt = source.updatedAt;
         answers[q.id] = entry;
       }
       return answers;
@@ -62,3 +63,4 @@
   root.AdventurePersistence = { createPersistence };
   if (typeof module !== 'undefined') module.exports = root.AdventurePersistence;
 })(globalThis);
+

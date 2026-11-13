@@ -31,7 +31,7 @@ footer{text-align:center;color:#667085;font-size:13px;margin-top:28px}
 <p id="savestatus" role="status" aria-live="polite"></p>
 <div id="questions"></div><div id="finish"></div><div class="panel" style="text-align:center"><button type="button" id="emily-set-cloud-save" class="check">🌟 Keep My Stars Safe!</button><p id="emily-set-cloud-status" role="status" aria-live="polite"></p></div>
 <footer>Take your time. Ask for help whenever you like. Your answers stay on this device.</footer></div></main>
-<script src="persistence.js?v=52"></script>
+<script src="learning-history.js?v=1"></script><script src="persistence.js?v=learning-history-1"></script>
 <script src="progress.js"></script>
 <script>
 const data={
@@ -97,11 +97,18 @@ let mathsLevel=Number(sessionStorage.getItem("emily-maths-level")||1);
 let englishLevel=Number(sessionStorage.getItem("emily-english-level")||1);
 let hubOpen=false;
 const state=restored.answers;
+const answerSignature=entry=>JSON.stringify([entry.value,entry.checked,entry.hint]);
+const savedAnswerSignatures=new Map(Object.entries(state).map(([id,entry])=>[id,answerSignature(entry)]));
+const learning=globalThis.AdventureHistory;
+const worksheetInfo={};
+function worksheetSkill(q,subject){if(q.writing)return 'Sentence writing';if(subject==='maths'){if(/cent|cost|dollar|\$/.test(q.q))return 'Money';if(/pattern|comes next/.test(q.q))return 'Patterns';if(/bigger|smaller|largest|smallest/.test(q.q))return 'Number comparison';if(/−|left|fewer/.test(q.q))return 'Subtraction';if(/\+|altogether|total/.test(q.q))return 'Addition';return 'Maths reasoning'}if(/capital|full stop|punctuation/.test(q.q+' '+q.hint))return 'Punctuation';if(/Yesterday|past.tense/.test(q.q+' '+q.why))return 'Grammar';if(/letters|spelling/.test(q.q))return 'Spelling';if(/means|opposite/.test(q.q))return 'Vocabulary';return 'Reading comprehension'}
+for(const [set,questions] of Object.entries(data)){const subject=set==='maths'?'maths':'english';for(const q of questions){const activity='worksheet-'+set;worksheetInfo[q.id]={activity,q};learning?.register(activity,q.id,{prompt:q.q,options:q.choices||[],correctIndex:q.writing?null:q.correct,skill:worksheetSkill(q,subject),subject,hint:q.hint,explanation:q.why||'',writing:!!q.writing});if(state[q.id]?.value!==undefined)learning?.baseline(activity,q.id,{answer:state[q.id].value,checked:!!state[q.id].checked,hintShown:!!state[q.id].hint})}}
+
 function showSaveStatus(result){
 const el=document.getElementById('savestatus');
 el.textContent=result.ok?'Progress saved on this device.':result.reason==='invalid'?'Saved progress could not be read. Your next answer will start a new save.':'Progress is only kept while this page is open. This browser could not save it.';
 }
-function save(){showSaveStatus(persistence.save(state,tab))}
+function save(){for(const [id,entry] of Object.entries(state)){const signature=answerSignature(entry);if(savedAnswerSignatures.get(id)!==signature){entry.updatedAt=Date.now();savedAnswerSignatures.set(id,signature)}}showSaveStatus(persistence.save(state,tab))}
 showSaveStatus(restored);
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function openSet(subject,level){tab=subject;if(subject==='maths')mathsLevel=level;else englishLevel=level;hubOpen=true;save();render();window.scrollTo({top:0,behavior:'smooth'})}
@@ -117,12 +124,14 @@ document.getElementById('questions').innerHTML=qs.map((q,i)=>{
 const s=state[q.id]||{}, checked=!!s.checked;
 let entry=q.writing?`<textarea id="txt-${q.id}" placeholder="Write your sentence here..." ${checked?'disabled':''}>${esc(s.value??'')}</textarea>`:`<div class="choices">${q.choices.map((c,j)=>`<label class="choice"><input type="radio" name="${q.id}" value="${j}" ${String(s.value)===String(j)?'checked':''} ${checked?'disabled':''}><span>${esc(c)}</span></label>`).join('')}</div>`;
 let fb=checked?`<div class="feedback ${!q.writing&&Number(s.value)!==q.correct?'retry':''}" role="status">${q.writing?'🌟 Lovely writing! Read it aloud and check your capital letter and full stop.':Number(s.value)===q.correct?'🎉 You got it! '+esc(q.why):'💛 Good try! '+esc(q.why)}</div>`:'';
-return `<article class="q"><strong>${i+1}. ${esc(q.q)}</strong>${entry}<div class="actions">${!checked?`<button type="button" class="hintbtn" data-id="${q.id}">💡 Hint</button><button type="button" class="check" data-id="${q.id}" ${s.value===undefined||String(s.value).trim()===''?'disabled':''}>Check my answer</button>`:''}</div><div class="hint" id="hint-${q.id}" ${s.hint?'':'hidden'}>${esc(q.hint)}</div>${fb}</article>`}).join('');
+return `<article class="q"><strong>${i+1}. ${esc(q.q)}</strong>${entry}<div class="actions">${!checked?`<button type="button" class="hintbtn" data-id="${q.id}">💡 Hint</button><button type="button" class="check" data-id="${q.id}" ${s.value===undefined||String(s.value).trim()===''?'disabled':''}>Check my answer</button>`:`<button type="button" class="revise" data-id="${q.id}">Make a change</button>`}</div><div class="hint" id="hint-${q.id}" ${s.hint?'':'hidden'}>${esc(q.hint)}</div>${fb}</article>`}).join('');
 document.getElementById('finish').innerHTML=done===qs.length?`<div class="end">🎉 Hooray, Emily!<p>You finished ${tab==='english'?'English':'Maths'}! Great effort!</p><button id="next">Try ${tab==='english'?'Maths':'English'} ➜</button></div>`:'';
-document.querySelectorAll('.choices input').forEach(el=>el.addEventListener('change',()=>{state[el.name]={...state[el.name],value:Number(el.value)};save();render()}));
-document.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',()=>{let id=el.id.slice(4);state[id]={...state[id],value:el.value};save();let b=el.closest('.q').querySelector('.check');if(b)b.disabled=!el.value.trim()}));
-document.querySelectorAll('.hintbtn').forEach(el=>el.addEventListener('click',()=>{let id=el.dataset.id;state[id]={...state[id],hint:!state[id]?.hint};save();let h=document.getElementById('hint-'+id);h.hidden=!state[id].hint}));
-document.querySelectorAll('.check').forEach(el=>el.addEventListener('click',()=>{let id=el.dataset.id;if(state[id]?.value===undefined||String(state[id].value).trim()==='')return;state[id].checked=true;save();render()}));
+document.querySelectorAll('.choices input').forEach(el=>el.addEventListener('change',()=>{const info=worksheetInfo[el.name];learning?.answer(info.activity,el.name,Number(el.value),{previousAnswer:state[el.name]?.value??null,contextText:tab==='english'?document.getElementById('intro').textContent:''});state[el.name]={...state[el.name],value:Number(el.value)};save();render()}));
+document.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',()=>{let id=el.id.slice(4);learning?.writing(worksheetInfo[id].activity,id,el.value,{contextText:document.getElementById('intro').textContent});state[id]={...state[id],value:el.value};save();let b=el.closest('.q').querySelector('.check');if(b)b.disabled=!el.value.trim()}));
+document.querySelectorAll('.hintbtn').forEach(el=>el.addEventListener('click',()=>{let id=el.dataset.id;learning?.event(worksheetInfo[id].activity,id,'hint',{shown:!state[id]?.hint,answerAtHint:state[id]?.value??null});state[id]={...state[id],hint:!state[id]?.hint};save();let h=document.getElementById('hint-'+id);h.hidden=!state[id].hint}));
+document.querySelectorAll('.check').forEach(el=>el.addEventListener('click',()=>{let id=el.dataset.id;if(state[id]?.value===undefined||String(state[id].value).trim()==='')return;learning?.flushWriting(worksheetInfo[id].activity,id);learning?.event(worksheetInfo[id].activity,id,'check',{answer:state[id].value,correct:worksheetInfo[id].q.writing?null:Number(state[id].value)===worksheetInfo[id].q.correct,feedbackRevealed:true});state[id].checked=true;save();render()}));
+document.querySelectorAll('.revise').forEach(button=>button.addEventListener('click',()=>{const id=button.dataset.id;learning?.event(worksheetInfo[id].activity,id,'reopen',{answer:state[id].value,afterFeedback:true});state[id].checked=false;save();render()}));
+document.querySelectorAll('#questions .q').forEach((element,index)=>{const q=qs[index];learning?.bind(element,worksheetInfo[q.id].activity,q.id)});
 const next=document.getElementById('next');if(next)next.addEventListener('click',()=>{tab=tab==='english'?'maths':'english';save();render();window.scrollTo({top:0,behavior:'smooth'})});
 }
 document.getElementById('emily-set-cloud-save').addEventListener('click',async()=>{const btn=document.getElementById('emily-set-cloud-save'),status=document.getElementById('emily-set-cloud-status');btn.disabled=true;status.textContent='Saving…';const ok=typeof window.adventureCloudSave==='function'&&await window.adventureCloudSave();status.textContent=ok?'🎉 Your stars and answers are safe!':'Cloud save unsuccessful. Your answers are still on this device.';btn.disabled=false});document.getElementById('hub-back').addEventListener('click',()=>{hubOpen=false;render();window.scrollTo({top:0,behavior:'smooth'})});document.querySelectorAll('[data-english-level]').forEach(b=>b.addEventListener('click',()=>{englishLevel=Number(b.dataset.englishLevel);try{sessionStorage.setItem('emily-english-level',String(englishLevel))}catch(e){}render()}));document.querySelectorAll('.level').forEach(b=>b.addEventListener('click',()=>{mathsLevel=Number(b.dataset.level);try{sessionStorage.setItem('emily-maths-level',String(mathsLevel))}catch(e){}render()}));document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;save();render()}));render();
@@ -136,12 +145,14 @@ const shopLevels=[
 const shopKey='emily-shop-v4';
 let shopState={};try{shopState=JSON.parse(localStorage.getItem(shopKey)||'{}')}catch{}
 let shopLevel=0;
-function shopPersist(){localStorage.setItem(shopKey,JSON.stringify(shopState))}
+const shopSkills=[['Vocabulary','Money addition','Position and order'],['Reading for detail','Money subtraction','Position and order'],['Reading reasons','Money multiplication','Comparison and reasoning']];
+shopLevels.forEach((questions,level)=>questions.forEach((q,index)=>{const id=level+'-'+index;learning?.register('shop',id,{prompt:q.q,options:q.opts,correctIndex:q.a,skill:shopSkills[level][index],subject:'mixed'});if(shopState[id]!==undefined)learning?.baseline('shop',id,{answer:shopState[id]})}));
+function shopPersist(){localStorage.setItem(shopKey,JSON.stringify(shopState));window.dispatchEvent(new Event('adventure-progress-changed'))}
 function shopRender(){
  const levels=document.getElementById('shop-levels');levels.replaceChildren();
  for(let i=0;i<3;i++){const b=document.createElement('button');b.type='button';b.className='level'+(i===shopLevel?' active':'');const correct=shopLevels[i].filter((q,j)=>shopState[i+'-'+j]===q.a).length;const attempted=shopLevels[i].filter((q,j)=>shopState[i+'-'+j]!==undefined).length;const progress=AdventureProgress.activityProgress(correct,shopLevels[i].length,attempted>0);b.textContent='🛍️ Shop '+(i+1)+' · '+progress.stars+' · '+progress.label;b.onclick=()=>{shopLevel=i;shopRender()};levels.append(b)}
  const game=document.getElementById('shop-game');game.replaceChildren();
- shopLevels[shopLevel].forEach((q,j)=>{const id=shopLevel+'-'+j;const card=document.createElement('div');card.className='q';const title=document.createElement('strong');title.textContent=(j+1)+'. '+q.q;card.append(title);const opts=document.createElement('div');opts.className='choices';q.opts.forEach((opt,k)=>{const btn=document.createElement('button');btn.type='button';btn.textContent=opt;btn.style.textAlign='left';if(shopState[id]===k)btn.style.background='#d9f3e4';btn.onclick=()=>{shopState[id]=k;shopPersist();shopRender()};opts.append(btn)});card.append(opts);if(shopState[id]!==undefined){const fb=document.createElement('p');fb.className='feedback';fb.textContent=shopState[id]===q.a?'🎉 Brilliant shopping!':'💛 Good try! Have another go.';card.append(fb)}game.append(card)});
+ shopLevels[shopLevel].forEach((q,j)=>{const id=shopLevel+'-'+j;const card=document.createElement('div');card.className='q';const title=document.createElement('strong');title.textContent=(j+1)+'. '+q.q;card.append(title);const opts=document.createElement('div');opts.className='choices';q.opts.forEach((opt,k)=>{const btn=document.createElement('button');btn.type='button';btn.textContent=opt;btn.style.textAlign='left';if(shopState[id]===k)btn.style.background='#d9f3e4';btn.onclick=()=>{learning?.answer('shop',id,k,{previousAnswer:shopState[id]??null});shopState[id]=k;shopPersist();shopRender()};opts.append(btn)});card.append(opts);if(shopState[id]!==undefined){const fb=document.createElement('p');fb.className='feedback';fb.textContent=shopState[id]===q.a?'🎉 Brilliant shopping!':'💛 Good try! Have another go.';card.append(fb)}game.append(card);learning?.bind(card,'shop',id)});
  const earned=shopLevels.reduce((n,qs,i)=>n+qs.filter((q,j)=>shopState[i+'-'+j]===q.a).length,0);const total=shopLevels.flat().length;const started=shopLevels.some((qs,i)=>qs.some((q,j)=>shopState[i+'-'+j]!==undefined));const progress=AdventureProgress.showProgress(document.getElementById('shop-stars'),earned,total,started);document.getElementById('shop-hub-status').textContent=progress.label;document.getElementById('shop-message').textContent=progress.stars+' · '+progress.label;
 }
 document.getElementById('shop-open').onclick=()=>{document.getElementById('hub').hidden=true;document.getElementById('worksheet-view').hidden=true;document.getElementById('shop-view').hidden=false;shopRender()};
@@ -159,7 +170,8 @@ const cupcakeQuestions=[
 ];
 const cupcakeKey='emily-cupcake-trial-v1';
 let cupcakeState={step:0,solved:[],hints:[]};try{const old=JSON.parse(localStorage.getItem(cupcakeKey)||'null');if(old&&Array.isArray(old.solved))cupcakeState={...cupcakeState,...old}}catch(e){}
-function cupcakeSave(){try{localStorage.setItem(cupcakeKey,JSON.stringify(cupcakeState))}catch(e){}}
+cupcakeQuestions.forEach((q,i)=>{learning?.register('cupcake',String(i),{prompt:q.q,options:q.opts,correctIndex:q.a,context:q.scene,skill:['Vocabulary','Subtraction','Following clues','Reading for detail','Subtraction'][i],hint:q.hint});if(cupcakeState.solved[i])learning?.baseline('cupcake',String(i),{completed:true,previousAnswersUnavailable:true})});
+function cupcakeSave(){try{localStorage.setItem(cupcakeKey,JSON.stringify(cupcakeState));window.dispatchEvent(new Event('adventure-progress-changed'))}catch(e){}}
 function cupcakeRender(){
  const n=cupcakeQuestions.length,step=Math.min(cupcakeState.step,n),done=cupcakeQuestions.filter((_,i)=>cupcakeState.solved[i]).length;
  const progress=AdventureProgress.showProgress(document.getElementById('cupcake-stars'),done,n,done>0||cupcakeState.hints.some(Boolean));
@@ -170,14 +182,15 @@ function cupcakeRender(){
  area.replaceChildren();fb.textContent='';next.hidden=true;ending.hidden=true;hint.hidden=step===n;
  if(step===n){ending.hidden=false;ending.textContent='🎉 You solved the mystery! Emily’s brother took the cupcake to make a surprise for Mum. ⭐⭐⭐⭐⭐ Great detective work!';return}
  const q=cupcakeQuestions[step];const p=document.createElement('p');p.textContent=q.scene;area.append(p);const h=document.createElement('h3');h.textContent=q.q;area.append(h);
- const choices=document.createElement('div');choices.className='choices';q.opts.forEach((option,i)=>{const b=document.createElement('button');b.type='button';b.textContent=option;b.disabled=!!cupcakeState.solved[step];b.onclick=()=>{if(i===q.a){cupcakeState.solved[step]=true;cupcakeSave();cupcakeRender();document.getElementById('cupcake-feedback').textContent='🌟 '+q.good;document.getElementById('cupcake-next').hidden=false}else{fb.textContent='💛 Nice try! Look at the clue and try again.';fb.className='feedback retry'}};choices.append(b)});area.append(choices);
+ const choices=document.createElement('div');choices.className='choices';q.opts.forEach((option,i)=>{const b=document.createElement('button');b.type='button';b.textContent=option;b.disabled=!!cupcakeState.solved[step];b.onclick=()=>{learning?.answer('cupcake',String(step),i);if(i===q.a){cupcakeState.solved[step]=true;cupcakeSave();cupcakeRender();document.getElementById('cupcake-feedback').textContent='🌟 '+q.good;document.getElementById('cupcake-next').hidden=false}else{fb.textContent='💛 Nice try! Look at the clue and try again.';fb.className='feedback retry'}};choices.append(b)});area.append(choices);
  if(cupcakeState.solved[step]){fb.textContent='🌟 '+q.good;next.hidden=false}
- hint.onclick=()=>{cupcakeState.hints[step]=true;cupcakeSave();fb.textContent='💡 '+q.hint;fb.className='hint'};
+ learning?.bind(area,'cupcake',String(step));
+ hint.onclick=()=>{learning?.event('cupcake',String(step),'hint',{shown:true});cupcakeState.hints[step]=true;cupcakeSave();fb.textContent='💡 '+q.hint;fb.className='hint'};
 }
 document.getElementById('cupcake-open').onclick=()=>{document.getElementById('hub').hidden=true;document.getElementById('worksheet-view').hidden=true;document.getElementById('shop-view').hidden=true;document.getElementById('cupcake-view').hidden=false;cupcakeRender();window.scrollTo({top:0,behavior:'smooth'})};
 document.getElementById('cupcake-back').onclick=()=>{document.getElementById('cupcake-view').hidden=true;hubOpen=false;render()};
 document.getElementById('cupcake-next').onclick=()=>{cupcakeState.step=Math.min(5,cupcakeState.step+1);cupcakeSave();cupcakeRender()};
 document.getElementById('cupcake-cloud-save').onclick=async()=>{const b=document.getElementById('cupcake-cloud-save'),status=document.getElementById('cupcake-save-status');b.disabled=true;status.textContent='Saving…';const ok=typeof window.adventureCloudSave==='function'&&await window.adventureCloudSave();status.textContent=ok?'🌈 Cupcake clues saved for your other devices!':'Your clues are saved here, but cloud saving did not finish.';b.disabled=false};
 cupcakeRender();
-</script><script src="./emily-parcel.js?v=3"></script><script src="./cloud-config.js?v=private-maths-1"></script><script src="./cloud-sync.js?v=private-maths-1"></script></body></html>
+</script><script src="./emily-parcel.js?v=history-1"></script><script src="./cloud-config.js?v=private-maths-1"></script><script src="./cloud-sync.js?v=learning-history-1"></script></body></html>
 

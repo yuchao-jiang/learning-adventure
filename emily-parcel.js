@@ -13,6 +13,8 @@ const questions=[
 ];
 let state={step:0,solved:[],hints:[]};
 try{const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved&&Array.isArray(saved.solved))state={...state,...saved}}catch(e){}
+const learning=globalThis.AdventureHistory;
+questions.forEach((q,i)=>{learning?.register('parcel',String(i),{prompt:q.q,context:q.scene,options:q.options,correctIndex:q.answer,skill:q.skill,hint:q.hint});if(state.solved[i])learning?.baseline('parcel',String(i),{completed:true,previousAnswersUnavailable:true})});
 const $=id=>document.getElementById(id);
 function save(){localStorage.setItem(key,JSON.stringify(state));window.dispatchEvent(new Event('adventure-progress-changed'))}
 function render(){
@@ -30,10 +32,11 @@ function render(){
  const q=questions[step],intro=document.createElement('p');intro.className='story';intro.style.padding='14px';intro.textContent=q.scene;area.append(intro);
  const title=document.createElement('h3');title.textContent='Clue '+(step+1)+': '+q.q;area.append(title);
  const choices=document.createElement('div');choices.className='choices';
- q.options.forEach((option,i)=>{const b=document.createElement('button');b.type='button';b.textContent=option;b.disabled=!!state.solved[step];b.onclick=()=>{if(i===q.answer){state.solved[step]=true;save();render();$('parcel-feedback').textContent='🌟 You found the clue!';$('parcel-next').hidden=false}else{$('parcel-feedback').textContent='💛 Not quite. Read the clue and try again!'}};choices.append(b)});
+ q.options.forEach((option,i)=>{const b=document.createElement('button');b.type='button';b.textContent=option;b.disabled=!!state.solved[step];b.onclick=()=>{learning?.answer('parcel',String(step),i);if(i===q.answer){state.solved[step]=true;save();render();$('parcel-feedback').textContent='🌟 You found the clue!';$('parcel-next').hidden=false}else{$('parcel-feedback').textContent='💛 Not quite. Read the clue and try again!'}};choices.append(b)});
  area.append(choices);
  if(state.solved[step]){$('parcel-feedback').textContent='🌟 You found the clue!';$('parcel-next').hidden=false}
- $('parcel-hint').onclick=()=>{$('parcel-feedback').textContent='💡 '+q.hint};
+ learning?.bind(area,'parcel',String(step));
+ $('parcel-hint').onclick=()=>{learning?.event('parcel',String(step),'hint',{shown:true});state.hints[step]=true;save();$('parcel-feedback').textContent='💡 '+q.hint};
 }
 $('parcel-open').onclick=()=>{['hub','worksheet-view','shop-view','cupcake-view'].forEach(id=>$(id).hidden=true);$('parcel-view').hidden=false;render();window.scrollTo({top:0,behavior:'smooth'})};
 $('parcel-back').onclick=()=>{$('parcel-view').hidden=true;$('hub').hidden=false};
@@ -42,3 +45,4 @@ $('parcel-save').onclick=async()=>{const ok=typeof window.adventureCloudSave==='
 window.addEventListener('storage',e=>{if(e.key===key){try{const fresh=JSON.parse(e.newValue);if(fresh&&Array.isArray(fresh.solved)){state=fresh;render()}}catch(e){}}});
 render();
 })();
+

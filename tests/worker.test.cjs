@@ -14,10 +14,11 @@ function setup() {
   queries.push(sql);
   return { bind(...args) { const statement = sqlite.prepare(sql); return {
    async first() { return statement.get(...args) ?? null; },
+   async all() { return {results:statement.all(...args)}; },
    async run() { return { meta: { changes: statement.run(...args).changes } }; }
   }; } };
  } } };
- const send = async (method = 'GET', body, headers = {}, child = 'emily', route = '/') => (await worker).fetch(new Request('https://sync.test' + route + '?child=' + child, {
+ const send = async (method = 'GET', body, headers = {}, child = 'emily', route = '/') => (await worker).fetch(new Request('https://sync.test' + route.split('&')[0] + '?child=' + child + (route.includes('&')?'&'+route.split('&').slice(1).join('&'):''), {
   method, headers: { 'X-Family-Pin': secret, 'CF-Connecting-IP': '192.0.2.1', ...headers },
   ...(body === undefined ? {} : { body: typeof body === 'string' ? body : JSON.stringify(body) })
  }), env);
@@ -160,4 +161,27 @@ test('login requires a parent passphrase and explicit remember choice', async ()
  assert.equal((await app.send('POST', { remember: true }, { 'X-Family-Pin': '' }, 'emily', '/session')).status, 401);
  assert.equal((await app.send('POST', { remember: 'true' }, {}, 'emily', '/session')).status, 400);
  assert.equal(app.sqlite.prepare('SELECT count(*) n FROM device_sessions').get().n, 0);
+});
+
+const historyEvent=(id,learner='jason')=>({version:1,id,learner,activity:'maths',questionId:'12',attemptId:'practice-1',type:'answer',at:'2026-11-13T10:00:00Z',question:{prompt:'Test question',skill:'Reasoning'},data:{answer:1,correct:false}});
+test('learning history requires authentication on reads and writes',async()=>{
+ const app=setup();for(const method of ['GET','POST'])assert.equal((await app.send(method,method==='POST'?{historyVersion:1,events:[historyEvent('a')]}:undefined,{'X-Family-Pin':''},'jason','/learning-history')).status,401);
+ assert.equal(app.sqlite.prepare('SELECT count(*) n FROM learning_events').get().n,0);
+});
+test('learning events append privately, retry idempotently, and cannot overwrite earlier answers',async()=>{
+ const app=setup();const post=events=>app.send('POST',{historyVersion:1,events},{},'jason','/learning-history');
+ const first=historyEvent('answer-1'),changed={...historyEvent('answer-2'),data:{answer:2,correct:true}};
+ assert.equal((await post([first,changed])).status,200);assert.equal((await post([first])).status,200);
+ assert.equal((await post([{...first,data:{answer:4}}])).status,409);
+ const response=await (await app.send('GET',undefined,{},'jason','/learning-history')).json();assert.deepEqual(response.events,[first,changed]);assert.equal(response.historyVersion,1);
+ assert.equal((await (await app.send('GET',undefined,{},'emily','/learning-history')).json()).events.length,0);
+ assert.equal(app.sqlite.prepare('SELECT count(*) n FROM progress').get().n,0);
+ assert.equal((await post([historyEvent('foreign','emily')])).status,400);
+ assert.equal((await post(Array.from({length:21},(_,i)=>historyEvent('x'+i)))).status,400);
+});
+test('learning history pagination does not skip records and rejects invalid cursors',async()=>{
+ const app=setup();const insert=app.sqlite.prepare('INSERT INTO learning_events(event_id,learner,occurred_at,document) VALUES(?,?,?,?)');for(let i=0;i<102;i++){const e=historyEvent('page-'+i);insert.run(e.id,'jason',e.at,JSON.stringify(e))}
+ const page=await (await app.send('GET',undefined,{},'jason','/learning-history')).json();assert.equal(page.events.length,100);assert.equal(page.hasMore,true);
+ const last=await (await app.send('GET',undefined,{},'jason','/learning-history&after='+page.nextCursor)).json();assert.equal(last.events.length,2);assert.equal(last.hasMore,false);
+ assert.equal((await app.send('GET',undefined,{},'jason','/learning-history&after=-1')).status,400);
 });
