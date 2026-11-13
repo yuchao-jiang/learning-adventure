@@ -177,3 +177,9 @@ test('locked maths pages never silently log in or upload work',async()=>{
  const app=await setup('jason',{'jason-maths-two-weeks-v1':mathsRecord()},{answers:'{}',notes:{}},{mathsPage:true,locked:true});
  await waitSync();await app.events.online();await waitSync();assert.equal(app.requests.length,0);
 });
+
+test('child maths cannot open a parent login through its load action',async()=>{
+ const app=await setup('jason',{}, {answers:'{}',notes:{}},{mathsPage:true,locked:true});
+ await app.window.adventureCloudLoad();await waitSync();
+ assert.equal(app.requests.length,0);
+});

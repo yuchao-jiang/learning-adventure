@@ -96,14 +96,6 @@ test('finishing saves separate first-attempt and checked scores', () => {
   assert.equal(saved.session.phase, 'done');
 });
 
-test('reset clears maths records without touching reading progress', () => {
-  const app = setup({ 'jason-reading-v1': '{"test":"keep"}' });
-  app.run('startSession();resetTest()');
-  assert.equal(app.storage.getItem('jason-maths-two-weeks-v1'), null);
-  assert.equal(app.storage.getItem('jason-reading-v1'), '{"test":"keep"}');
-});
-
-
 test('mission selection keeps an accessible name without redundant instructions', () => {
   assert.match(html, /<select aria-label="Choose a maths mission" id="week"/);
   assert.doesNotMatch(html, /Choose a mission:|Start with Careful Thinker\./);
@@ -152,23 +144,26 @@ test('mistakes book includes a wrong answer that was corrected during checking',
  assert.equal(app.run('AdventureMaths.mistakes(store,data).find(item=>item.id===0).needsPractice'),false);
  assert.equal(app.elements.get('mistakes-page').hidden,false);
 });
-test('parent question preview creates no attempt, score, or stored progress',()=>{
- const app=setup();app.run('showParentPreview()');
- assert.equal(app.run('store.session'),null);
- assert.equal(app.storage.getItem('jason-maths-two-weeks-v1'),null);
- assert.equal(app.elements.get('preview-page').hidden,false);
- assert.equal(app.elements.get('preview-questions').children.length,8);
+test('child maths page has no parent, preview, classification or reset controls',()=>{
+ assert.doesNotMatch(html,/Parent:|Parent answer|Include parent|Mark as parent|Count as Jason|function resetTest|showParentPreview|markParentPreview/);
+ assert.match(html,/>▶ Play<|>📚 My work<|>⭐ 错题本</);
 });
-test('a parent preview is excluded from results and mistakes without deleting its record',()=>{
- const app=setup();app.run('startSession();nextPhase();nextPhase();markParentPreview(store.session.id,true)');
+test('previous parent exclusions remain hidden without deleting saved records',()=>{
+ const first=setup();first.run('startSession();nextPhase();nextPhase()');
+ const saved=JSON.parse(first.storage.getItem('jason-maths-two-weeks-v1'));
+ saved.attemptTags={[saved.session.id]:{preview:true,updatedAt:Date.now()}};
+ const app=setup({'jason-maths-two-weeks-v1':JSON.stringify(saved)});
  assert.equal(app.run('AdventureMaths.records(store).length'),1);
- assert.equal(app.run('AdventureMaths.records(store)[0].preview'),true);
  assert.equal(app.run('AdventureMaths.mistakes(store,data).length'),0);
  assert.equal(app.elements.get('practice').hidden,true);
- assert.equal(app.elements.get('attempt-list').children.length,1); // empty-state message
- app.run('document.getElementById("include-previews").checked=true;renderHistory()');
- assert.equal(app.elements.get('attempt-list').children.length,1);
- app.run('markParentPreview(store.session.id,false)');
- assert.equal(app.run('AdventureMaths.records(store)[0].preview'),false);
- assert.equal(app.elements.get('practice').hidden,false);
+ assert.equal(app.storage.getItem('jason-maths-two-weeks-v1'),JSON.stringify(saved));
+});
+test('active practice hides the mission chooser and completed work offers child answer review',()=>{
+ const app=setup();app.run('startSession()');
+ assert.equal(app.elements.get('mission-choice').hidden,true);
+ assert.equal(app.elements.get('answers-box').hidden,true);
+ app.run('nextPhase();nextPhase()');
+ assert.equal(app.elements.get('mission-choice').hidden,false);
+ assert.equal(app.elements.get('answers-box').hidden,false);
+ assert.ok(app.elements.get('answers-review').children.length>0);
 });

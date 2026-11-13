@@ -23,8 +23,10 @@ No external dependencies are required. The suite covers:
 - Maths answer/deadline restoration, immutable completed attempts, independent
   attempt/history merging, first-versus-checked answers, and reading saves that
   preserve maths progress.
-- Parent question previews create no recorded work; classification excludes a
-  parent record from results/mistakes and survives cloud merging or reversal.
+- Jason's Maths page exposes no parent/admin controls, keeps active practice
+  focused, offers child-facing answer review after completion and preserves
+  existing preview exclusions. Classification merge/restore behavior remains
+  covered at the storage layer.
 - Private migration exports and non-overwriting imports.
 
 Cloud tests use mock requests and storage; they never write to GitHub or Cloudflare.
