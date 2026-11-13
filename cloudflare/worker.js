@@ -49,6 +49,7 @@ export default { async fetch(request, env) {
  const url = new URL(request.url);
  const sessionRoute = url.pathname === '/session';
  const revokeAllRoute = url.pathname === '/sessions';
+ const historyRoute = url.pathname === '/learning-history';
  if (sessionRoute ? !['POST', 'DELETE'].includes(request.method) : revokeAllRoute ? request.method !== 'DELETE' : !['GET', 'POST'].includes(request.method)) return reply({ error: 'Method not allowed' }, 405);
  const child = url.searchParams.get('child');
  if (!sessionRoute && !revokeAllRoute && !['emily', 'jason'].includes(child)) return reply({ error: 'Unknown learner' }, 400);
@@ -97,6 +98,29 @@ export default { async fetch(request, env) {
    await env.PROGRESS_DB.prepare('DELETE FROM device_sessions WHERE expires_at <= ?').bind(now).run();
    await env.PROGRESS_DB.prepare('INSERT INTO device_sessions (token_hash, expires_at) VALUES (?, ?)').bind(hash, expiresAt).run();
    return reply({ token: deviceToken, expiresAt, remembered: options.remember });
+  }
+  if(historyRoute){
+   const historyReply=(body,status=200)=>reply({...body,historyVersion:1},status);
+   if(request.method==='GET'){
+    const after=Number(url.searchParams.get('after')||0);
+    if(!Number.isSafeInteger(after)||after<0)return historyReply({error:'Invalid history cursor'},400);
+    const result=await env.PROGRESS_DB.prepare('SELECT seq, document FROM learning_events WHERE learner = ? AND seq > ? ORDER BY seq LIMIT 100').bind(child,after).all();
+    return historyReply({events:result.results.map(row=>JSON.parse(row.document)),nextCursor:result.results.at(-1)?.seq||after,hasMore:result.results.length===100});
+   }
+   let payload;
+   try{payload=await readPayload(request)}catch(error){return historyReply({error:error.message==='Save too large'?'History batch too large':'Invalid history JSON'},error.message==='Save too large'?413:400)}
+   const kinds=['answer','check','hint','view','time','completion','start','import','restart','flag','reopen'];
+   const valid=event=>isObject(event)&&event.version===1&&event.learner===child&&typeof event.id==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(event.id)&&typeof event.activity==='string'&&event.activity.length>0&&event.activity.length<=100&&typeof event.questionId==='string'&&event.questionId.length<=150&&typeof event.attemptId==='string'&&event.attemptId.length<=150&&kinds.includes(event.type)&&typeof event.at==='string'&&Number.isFinite(Date.parse(event.at))&&isObject(event.question)&&isObject(event.data)&&new TextEncoder().encode(JSON.stringify(event)).length<=64000;
+   if(!isObject(payload)||payload.historyVersion!==1||!Array.isArray(payload.events)||payload.events.length<1||payload.events.length>20||!payload.events.every(valid))return historyReply({error:'Invalid history batch'},400);
+   const stable=value=>JSON.stringify(value,(_,item)=>isObject(item)?Object.fromEntries(Object.keys(item).sort().map(key=>[key,item[key]])):item);
+   const accepted=[];
+   for(const event of payload.events){
+    const document=stable(event);
+    const result=await env.PROGRESS_DB.prepare('INSERT INTO learning_events (event_id, learner, occurred_at, document) VALUES (?, ?, ?, ?) ON CONFLICT(event_id) DO NOTHING').bind(event.id,child,event.at,document).run();
+    if(result.meta.changes!==1){const existing=await env.PROGRESS_DB.prepare('SELECT document FROM learning_events WHERE event_id = ?').bind(event.id).first();if(existing?.document!==document)return historyReply({error:'History event already exists with different content'},409)}
+    accepted.push(event.id);
+   }
+   return historyReply({ok:true,accepted});
   }
   // Both reads and writes are authenticated before touching learner records.
   if (request.method === 'GET') {

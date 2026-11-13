@@ -25,7 +25,7 @@ saves. Pause the legacy Worker first so no new saves are missed.
 
 1. Open **Storage & databases → D1 SQL Database**, create `learning-adventure-progress`.
 2. Open its SQL console and run the SQL from `cloudflare/schema.sql` to create
-   `progress`, `auth_attempts`, and `device_sessions`. If you already ran the old
+   `progress`, `auth_attempts`, `device_sessions`, and `learning_events`. If you already ran the old
    schema, run the updated schema again; CREATE TABLE IF NOT EXISTS preserves records.
 3. Run the contents of the local `.private-backup/private-import.sql` in that
    database's SQL console. It only inserts missing learners; it does not replace
@@ -184,3 +184,38 @@ timer until Jason presses Start. Either part can be selected and repeated.
 History names include the part, and both parts keep flags, explanations, mistakes
 and automatic saving. Existing nine-question attempts retain their original
 questions and deadline if any were started before this change.
+
+## Upgrade: private answer history and question timing
+
+For an existing installation, keep the same database, `PROGRESS_DB` binding and
+family passphrase. No progress import or new secret is needed.
+
+1. Run the full updated `cloudflare/schema.sql` in the existing D1 console. It
+   adds `learning_events` and its index without replacing existing progress.
+2. Replace the sync Worker's source with the full updated `cloudflare/worker.js`
+   and deploy it, retaining the existing binding and secrets.
+3. Merge/deploy the website PR. Open each learner's existing browser and unlock
+   private cloud access if needed. New events upload automatically; events queued
+   before the Worker upgrade retry without being deleted.
+4. Open `learning-review.html` from the parent controls to load history. Both
+   GET and POST `/learning-history?child=emily|jason` require the same private
+   authentication as progress. JSON contains the complete event stream; CSV
+   provides a question summary for later analysis. Keep downloaded files private.
+
+Emily's worksheet choices, writing drafts and checks, shop, cupcake, parcel and
+Rainbow choices/hints are recorded. Writing drafts save on the first input and
+again after one second of quiet or leaving the page; checking captures the exact
+submitted text. "Make a change" keeps the first submission and later changes.
+Jason Maths records answer changes, flags, first-check and final submissions,
+question/skill metadata and practice timestamps. Question time records separate
+solving/checking phases. It estimates focused viewing, pauses on hidden/unfocused
+pages, and stops after 60 seconds without interaction; it cannot measure thought
+or distinguish a parent's preview from a child's work.
+
+The event journal is separate from the progress snapshot and appends by unique
+ID. Retrying an identical event is safe; changing an existing event is rejected.
+Unacknowledged records stay in this browser's local storage and retry online;
+clearing browser data before upload can lose these records. Storage errors emit
+an `adventure-history-status` failure event. Previously unrecorded answer changes
+and timings cannot be recovered. Imported answers are labelled accordingly.
+Rainbow Rescue is now included in Emily's normal private progress snapshot too.

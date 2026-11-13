@@ -183,3 +183,19 @@ test('child maths cannot open a parent login through its load action',async()=>{
  await app.window.adventureCloudLoad();await waitSync();
  assert.equal(app.requests.length,0);
 });
+
+test('Rainbow Rescue progress joins Emily private snapshot and survives cross-device restore',async()=>{
+ const rainbow=JSON.stringify({step:1,solved:[true],hints:[true],attemptId:'rescue',updatedAt:10});
+ const app=await setup('emily',{}, {raw:null,rainbow});assert.equal(JSON.parse(app.localStorage.getItem('emily-rainbow-v1')).solved[0],true);
+ await app.window.adventureCloudSave();assert.equal(JSON.parse(app.writes.at(-1).data.rainbow).attemptId,'rescue');
+});
+test('a new Rainbow attempt does not erase the saved newer attempt',async()=>{
+ const current=JSON.stringify({step:0,solved:[],attemptId:'new',updatedAt:20});const old=JSON.stringify({step:6,solved:[true,true,true,true,true,true],attemptId:'old',updatedAt:10});
+ const app=await setup('emily',{'emily-rainbow-v1':current},{raw:null,rainbow:old});await app.window.adventureCloudSave();assert.equal(JSON.parse(app.writes.at(-1).data.rainbow).attemptId,'new');assert.equal(JSON.parse(app.writes.at(-1).data.rainbow).step,0);
+});
+
+test('Emily deliberately reopened answers retain newer revisions across cloud saves',async()=>{
+ const raw=JSON.stringify({version:2,answers:{'e-1':{value:1,checked:false,hint:false,updatedAt:20}}});
+ const remote=JSON.stringify({version:2,answers:{'e-1':{value:0,checked:true,hint:false,updatedAt:10}}});
+ const app=await setup('emily',{'emily-adventure-v2':raw},{raw:remote});await app.window.adventureCloudSave();assert.equal(JSON.parse(app.writes.at(-1).data.raw).answers['e-1'].value,1);assert.equal(JSON.parse(app.writes.at(-1).data.raw).answers['e-1'].checked,false);
+});
