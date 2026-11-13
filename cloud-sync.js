@@ -10,13 +10,13 @@
  let parentSettings=null;
  if(child==='jason'&&!mathsPage){parentSettings=document.createElement('details');parentSettings.style.marginTop='12px';const summary=document.createElement('summary');summary.textContent='Parent settings';parentSettings.append(summary);document.querySelector?.('header')?.append(parentSettings)}
  if(child==='emily'){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='🌟 Keep My Stars Safe!';saveButton.style.cssText='margin:12px 0;padding:12px 18px;border-radius:12px;background:#d9f3e4;border:2px solid #39976e;font-weight:700';const status=document.createElement('p');status.id='emily-cloud-status';status.setAttribute('role','status');const hub=document.getElementById('hub');if(hub){hub.append(saveButton,status);saveButton.addEventListener('click',async()=>{saveButton.disabled=true;status.textContent='Saving…';const ok=await save();status.textContent=ok?'🎉 Your stars and answers are safe!':'Cloud save did not finish. Progress remains on this device.';saveButton.disabled=false})}}
- if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent='☁️ Checking saved progress…';(parentSettings||jasonHost)?.append(indicator)}
+ if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent=mathsPage?'Loading your work…':'☁️ Checking saved progress…';(parentSettings||jasonHost)?.append(indicator)}
  let sha=null,cloudExists=false,jasonExtras={};
  const sessionKey='adventure-cloud-session-v1',deviceKey='adventure-cloud-device-v1';
  let pending=null,unlockPromise=null,remoteMaths=null,autoBusy=false,autoQueued=false;
  // Discard credentials from the earlier passphrase-based client.
  try{sessionStorage.removeItem('adventure-family-passphrase-session-v2');sessionStorage.removeItem('adventure-family-pin-session')}catch{}
- const say=t=>{const indicator=document.getElementById('cloud-sync-status');if(indicator)indicator.textContent=t;const emily=document.getElementById('emily-cloud-status');if(emily)emily.textContent=t};
+ const say=t=>{const indicator=document.getElementById('cloud-sync-status');if(indicator)indicator.textContent=mathsPage?(/failed|retry|not configured|locked|unlock|Could not/i.test(t)?'Saved on this device.':/Syncing|Saving/i.test(t)?'Saving…':/synced|saved to your private/i.test(t)?'Saved ✓':'Ready to play.'):t;const emily=document.getElementById('emily-cloud-status');if(emily)emily.textContent=t};
  const endpoint=url+'?child='+encodeURIComponent(child);
  // Emily's persistence library stores versioned data; use its own storage key.
  function snapshot(){
@@ -216,7 +216,7 @@
    });
  }
  window.adventureCloudSave=save;
- window.adventureCloudLoad=()=>mathsPage?unlockMaths():load(true);
+ window.adventureCloudLoad=()=>mathsPage?autoSync():load(true);
  window.adventureCloudLock=async()=>{
    const session=storedSession();clearSession();clearTimeout(pending);if(mathsPage){unlock.hidden=false;lock.hidden=true}
    try{if(session)await api(url+'/session','DELETE',session);say('Cloud locked. This device is forgotten. Local work remains here.')}
@@ -229,16 +229,11 @@
    catch(e){say('Could not forget devices: '+e.message)}finally{consent.passphrase=''}
  };
  const controls=document.createElement('div');controls.className='actions';
- const unlock=document.createElement('button');unlock.type='button';unlock.textContent='🔐 Unlock private cloud progress';unlock.addEventListener('click',()=>mathsPage?unlockMaths():load(true));
+ const unlock=document.createElement('button');unlock.type='button';unlock.textContent='🔐 Unlock private cloud progress';unlock.addEventListener('click',()=>load(true));
  const lock=document.createElement('button');lock.type='button';lock.textContent='Lock cloud';lock.addEventListener('click',window.adventureCloudLock);
  const forgetAll=document.createElement('button');forgetAll.type='button';forgetAll.textContent='Forget all trusted devices';forgetAll.addEventListener('click',window.adventureCloudForgetAll);
- if(mathsPage){
-   const manage=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Parent cloud controls';manage.append(summary,lock,forgetAll);controls.append(unlock,manage);
- }else controls.append(unlock,lock,forgetAll);
- (child==='emily'?document.getElementById('hub'):(parentSettings||jasonHost))?.append(controls);
- async function unlockMaths(){
-   try{if(await getSession(true))await autoSync()}catch(e){say('Cloud unlock failed: '+e.message)}
- }
+ controls.append(unlock,lock,forgetAll);
+ if(!mathsPage)(child==='emily'?document.getElementById('hub'):(parentSettings||jasonHost))?.append(controls);
  async function autoSync(){
    if(autoBusy){autoQueued=true;return}
    await initialLoad;
@@ -267,3 +262,4 @@
    autoSync();
  }
 })();
+

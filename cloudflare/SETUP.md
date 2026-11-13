@@ -142,16 +142,16 @@ Avoid simultaneous edits to the same attempt on two devices; timestamps depend
 on device clocks. Reset on one device does not delete private cloud history.
 Cloud saving reports size-limit failures rather than silently trimming history.
 
-## Parent previews
+## Jason's child-facing maths page
 
-Use **Parent: preview questions** on the Maths practice screen to inspect questions
-and optionally reveal their explanations. This view creates no session, timer,
-answers or scores. An already-running child practice keeps its original timer.
+The Maths page contains Play, My work, and 错题本. It has no parent preview,
+classification, reset, unlock, lock, revocation or cloud-settings controls.
+Correct answers and explanations are available to Jason after completing work.
+Existing preview classifications remain in stored records and continue to be
+excluded from his results/history/mistakes; this UI change does not erase records.
 
-If a parent previously started a recorded practice by mistake, open it in
-**All attempts** and choose **Mark as parent preview**. It is excluded from
-Jason's results, normal history list, roadmap status and mistakes book. The
-record is retained and its classification syncs privately. Enable **Include
-parent previews** to review it or choose **Count as Jason's attempt** to restore
-it. No actual 0/8 result is automatically excluded; the parent chooses which
-record was a preview.
+Private access is managed from **Parent settings on Jason's roadmap**, outside
+the Maths page. Unlock or remember a family device there. The Maths page quietly
+uses that existing credential for automatic sync. If access expires or the
+device is offline, work remains saved locally; its status says Saved on this
+device. A parent can return to roadmap settings to restore private access.
