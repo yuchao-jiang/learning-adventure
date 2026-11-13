@@ -31,8 +31,8 @@ async function setup(child, local, remote, options = {}) {
       if(options.offline)throw Error('Offline');
       if(options.unauthorized)return {ok:false,status:401,json:async()=>({storage:'private-d1-v1',error:'Cloud session expired'})};
       if(url.endsWith('/session') || url.endsWith('/sessions'))return {ok:true,json:async()=>({storage:'private-d1-v1',token,expiresAt:Date.now()+30*86400000})};
-      if (fetchOptions.method === 'POST') { writes.push(JSON.parse(fetchOptions.body)); return { ok: true, json: async () => ({ sha: 'new', storage: 'private-d1-v1' }) }; }
-      return { ok: true, json: async () => ({ exists: true, sha: 'old', data: { data: remote }, ...(options.legacy ? {} : { storage: 'private-d1-v1' }) }) };
+      if (fetchOptions.method === 'POST') { writes.push(JSON.parse(fetchOptions.body)); return { ok: true, json: async () => ({ sha: 'new', storage: options.github?'private-github-v1':'private-d1-v1' }) }; }
+      return { ok: true, json: async () => ({ exists: true, sha: 'old', data: { data: remote }, ...(options.legacy ? {} : { storage: options.github ? 'private-github-v1' : 'private-d1-v1' }) }) };
     } };
   vm.runInNewContext(source, context);
   if (!options.locked) await window.adventureCloudLoad();
@@ -198,4 +198,10 @@ test('Emily deliberately reopened answers retain newer revisions across cloud sa
  const raw=JSON.stringify({version:2,answers:{'e-1':{value:1,checked:false,hint:false,updatedAt:20}}});
  const remote=JSON.stringify({version:2,answers:{'e-1':{value:0,checked:true,hint:false,updatedAt:10}}});
  const app=await setup('emily',{'emily-adventure-v2':raw},{raw:remote});await app.window.adventureCloudSave();assert.equal(JSON.parse(app.writes.at(-1).data.raw).answers['e-1'].value,1);assert.equal(JSON.parse(app.writes.at(-1).data.raw).answers['e-1'].checked,false);
+});
+
+
+test('private GitHub storage responses remain compatible with cloud progress saving',async()=>{
+ const app=await setup('emily',{'emily-adventure-v2':JSON.stringify({version:2,answers:{}})},{raw:JSON.stringify({version:2,answers:{}})},{github:true});
+ assert.equal(await app.window.adventureCloudSave(),true);assert.equal(app.window.ADVENTURE_SYNC_STORAGE,'private-github-v1');assert.equal(app.writes.length,1);
 });

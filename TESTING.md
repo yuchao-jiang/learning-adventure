@@ -46,3 +46,10 @@ API authentication, immutable/idempotent inserts, learner isolation and paginati
 Rainbow snapshot tests cover restoration and restarting without resurrecting old
 completion. Browser smoke checks exercise Jason answer changes/flags/phase timing,
 Emily answer reopening and writing changes, Rainbow recording and parent review.
+
+
+Private GitHub storage tests use a mocked GitHub API and synthetic records. They
+cover private-destination checks, server-only credentials, Unicode, pagination,
+idempotent/immutable event IDs, ingestion ordering, concurrent branch commits,
+no learning writes to D1, and migration verification/non-overwriting imports.
+No live learner data is used in this verification.
