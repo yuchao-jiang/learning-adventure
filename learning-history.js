@@ -26,8 +26,9 @@
   for(const event of events.slice().sort((a,b)=>a.at.localeCompare(b.at)||a.id.localeCompare(b.id))){
    if(event.questionId==='summary')continue;
    const key=[event.learner,event.activity,event.attemptId,event.questionId].join('|');
-   if(!groups.has(key))groups.set(key,{learner:event.learner,activity:event.activity,attemptId:event.attemptId,questionId:event.questionId,question:event.question||{},first:null,latest:null,firstSubmitted:null,checks:0,hints:0,flags:0,activeMs:0,revisions:0,legacy:false});
+   if(!groups.has(key))groups.set(key,{learner:event.learner,activity:event.activity,attemptId:event.attemptId,questionId:event.questionId,question:event.question||{},first:null,latest:null,firstSubmitted:null,checks:0,hints:0,flags:0,activeMs:0,revisions:0,legacy:false,notes:[]});
    const row=groups.get(key);if(Object.keys(event.question||{}).length)row.question=event.question;
+   if(event.type==='parent-note')row.notes.push(event);
    if(event.type==='import'){row.legacy=true;row.imported=event.data}
    if(event.type==='answer'){if(!row.first)row.first=event;if(!row.latest||JSON.stringify(row.latest.data.answer)!==JSON.stringify(event.data.answer))row.revisions++;row.latest=event}
    if(event.type==='check'){row.checks++;if(!row.firstSubmitted)row.firstSubmitted=event;if(event.data?.answer!==undefined)row.latest=event}

@@ -219,3 +219,19 @@ clearing browser data before upload can lose these records. Storage errors emit
 an `adventure-history-status` failure event. Previously unrecorded answer changes
 and timings cannot be recovered. Imported answers are labelled accordingly.
 Rainbow Rescue is now included in Emily's normal private progress snapshot too.
+
+## Parent observations
+
+Deploy the updated Worker to accept `parent-note` events (no new schema is
+needed beyond `learning_events`). In `learning-review.html`, unlock private
+access, choose a learner and question, enter an observation, and select
+**Save private note**. Choosing a saved question associates the observation with
+that attempt. Part 1 general-observation choices associate notes with the
+question without guessing which attempt the parent saw.
+
+Notes retain the parent's wording and attribution; they do not modify answers,
+scores, or timing. Additional notes append without replacing older observations.
+Notes are visible in the private review and included in JSON and CSV downloads.
+The form distinguishes database confirmation from a locally queued note.
+Do not put real observations in source code, tests, issues or PR descriptions.
+Any private SQL import belongs in `.private-backup/` and must stay out of GitHub.
