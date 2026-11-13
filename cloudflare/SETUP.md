@@ -1,5 +1,10 @@
 # Private family progress — deployment and migration
 
+For the optional private GitHub learning-storage backend, use
+[GITHUB_STORAGE.md](GITHUB_STORAGE.md). It reuses this Worker and keeps D1 only
+for authentication while learning snapshots/history move to the private repo.
+Default behavior remains D1 until the new mode is explicitly configured.
+
 The pages remain public. Learner records belong only in the private Cloudflare D1
 database, never in the website repository. This change is not active until the
 Worker is deployed. `cloud-config.js` intentionally starts with no endpoint so
@@ -235,3 +240,4 @@ Notes are visible in the private review and included in JSON and CSV downloads.
 The form distinguishes database confirmation from a locally queued note.
 Do not put real observations in source code, tests, issues or PR descriptions.
 Any private SQL import belongs in `.private-backup/` and must stay out of GitHub.
+

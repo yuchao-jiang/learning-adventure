@@ -42,7 +42,7 @@
  if(typeof module!=='undefined')module.exports=api;
  root.LearningHistory=api;
  if(!root.document)return;
- const recorders=new Map(),writing=new Map();let syncTimer=null,syncing=false;
+ const recorders=new Map(),writing=new Map();let syncTimer=null,syncing=false,lastGitHubSync=0;
  const sessionKey='adventure-cloud-session-v1',deviceKey='adventure-cloud-device-v1';
  function endpoint(){const url=String(root.ADVENTURE_SYNC_URL||'').replace(/\/$/,'');return url.startsWith('https://')?url:null}
  function credential(){for(const [storage,key] of [[root.sessionStorage,sessionKey],[root.localStorage,deviceKey]]){try{const value=JSON.parse(storage.getItem(key)||'null');if(value&&/^[a-f0-9]{64}$/.test(value.token)&&value.expiresAt>Date.now()&&value.endpoint===endpoint())return value}catch{}}return null}
@@ -51,10 +51,12 @@
  async function request(learner,method,body,cursor){
   const url=endpoint(),session=credential();if(!url||!session)throw Error('Unlock private access from the learner roadmap first.');
   const response=await fetch(url+'/learning-history?child='+encodeURIComponent(learner)+(cursor!==undefined?'&after='+cursor:''),{method,cache:'no-store',headers:{Authorization:'Bearer '+session.token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
-  const result=await response.json();if(result.storage!=='private-d1-v1'||result.historyVersion!==1)throw Error('Private history setup is not finished. Local records are kept for retry.');if(!response.ok)throw Error(result.error||'Private history request failed');return result;
+  const result=await response.json();if(!['private-d1-v1','private-github-v1'].includes(result.storage)||result.historyVersion!==1)throw Error('Private history setup is not finished. Local records are kept for retry.');if(!response.ok)throw Error(result.error||'Private history request failed');return result;
  }
  async function sync(learner){
-  if(syncing||!endpoint()||!credential())return false;syncing=true;
+  if(syncing||!endpoint()||!credential())return false;
+  if(root.ADVENTURE_SYNC_STORAGE==='private-github-v1'){if(Date.now()-lastGitHubSync<60000)return false;lastGitHubSync=Date.now()}
+  syncing=true;
   try{
    for(const name of learner?[learner]:['emily','jason']){
     const recorder=forLearner(name);
@@ -92,3 +94,4 @@
  root.addEventListener('pagehide',()=>{flushWriting();flushTime();sync()});root.addEventListener('online',()=>sync());
  setInterval(()=>{flushTime();viewport()},10000);setInterval(()=>sync(),30000);
 })(globalThis);
+

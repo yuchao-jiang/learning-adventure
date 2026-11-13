@@ -32,7 +32,81 @@ async function readPayload(request) {
  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
 }
+// GitHub credentials stay in Worker secrets. All learning writes use a verified PRIVATE repo.
+const canonical=value=>JSON.stringify(value,(_,item)=>isObject(item)?Object.fromEntries(Object.keys(item).sort().map(key=>[key,item[key]])):item);
+function storageError(status=503){const error=Error('Private repository unavailable');error.status=status;return error}
+function decodeGitHub(value){return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(value.replace(/\s/g,'')),c=>c.charCodeAt(0)))}
+function encodedPath(path){return path.split('/').map(encodeURIComponent).join('/')}
+async function githubStorage(env){
+ const repo=env.LEARNING_GITHUB_REPOSITORY,token=env.LEARNING_GITHUB_TOKEN;
+ if(typeof repo!=='string'||!/^[-\w.]+\/[-\w.]+$/.test(repo)||typeof token!=='string'||!token)throw storageError();
+ const base='https://api.github.com/repos/'+repo;
+ async function api(path,method='GET',body,missing=false){
+  const response=await fetch(base+path,{method,redirect:'error',headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'Learning-Adventure-Private-Storage',...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});
+  if(missing&&response.status===404)return null;
+  if(!response.ok)throw storageError(response.status===409||response.status===422?409:503);
+  return response.json();
+ }
+ const repository=await api('');
+ if(repository.private!==true||repository.archived===true)throw storageError();
+ const branch=env.LEARNING_GITHUB_BRANCH||repository.default_branch;
+ if(typeof branch!=='string'||!branch)throw storageError();
+ async function head(){const ref=await api('/git/ref/heads/'+encodeURIComponent(branch));const commit=await api('/git/commits/'+ref.object.sha);return {sha:ref.object.sha,tree:commit.tree.sha}}
+ async function read(path,ref){
+  const file=await api('/contents/'+encodedPath(path)+'?ref='+encodeURIComponent(ref), 'GET',undefined,true);if(!file)return null;
+  if(file.type!=='file'||typeof file.sha!=='string')throw storageError();
+  const blob=file.encoding==='base64'?file:await api('/git/blobs/'+file.sha);
+  if(blob.encoding!=='base64'||typeof blob.content!=='string')throw storageError();
+  return {sha:file.sha,value:JSON.parse(decodeGitHub(blob.content))};
+ }
+ async function write(parent,files,message){
+  const tree=await api('/git/trees','POST',{base_tree:parent.tree,tree:files.map(([path,value])=>({path,mode:'100644',type:'blob',content:canonical(value)}))});
+  const commit=await api('/git/commits','POST',{message,tree:tree.sha,parents:[parent.sha]});
+  // Non-fast-forward writes fail: never force-push or replace another device's work.
+  await api('/git/refs/heads/'+encodeURIComponent(branch),'PATCH',{sha:commit.sha,force:false});return commit.sha;
+ }
+ return {head,read,write};
+}
+async function githubProgress(env,child,method,payload){
+ const store=await githubStorage(env),path='private-data/progress/'+child+'.json';
+ for(let retry=0;retry<3;retry++){
+  const head=await store.head(),saved=await store.read(path,head.sha);
+  if(method==='GET')return saved?{exists:true,data:saved.value,sha:saved.sha}:{exists:false,data:null};
+  if((saved?.sha||null)!==(payload.sha||null))throw storageError(409);
+  const document={version:1,child,data:payload.data,updatedAt:new Date().toISOString()};
+  try{const sha=await store.write(head,[[path,document]],'Save private learning progress');const result=await store.read(path,sha);return {ok:true,sha:result.sha}}
+  catch(error){if(error.status!==409||retry===2)throw error}
+ }
+}
+async function githubHistory(env,child,method,events,after=0){
+ const store=await githubStorage(env),prefix='private-data/history/'+child+'/',indexPath=prefix+'index.json';
+ for(let retry=0;retry<3;retry++){
+  const head=await store.head(),saved=await store.read(indexPath,head.sha);
+  const index=saved?.value||{version:1,nextSequence:1,segments:[],events:{}};
+  if(index.version!==1||!Number.isSafeInteger(index.nextSequence)||!Array.isArray(index.segments)||!isObject(index.events))throw storageError();
+  if(method==='GET'){
+   const records=[];
+   for(const segment of index.segments){if(segment.to<=after)continue;const file=await store.read(segment.path,head.sha);if(!file||!Array.isArray(file.value.records))throw storageError();for(const record of file.value.records)if(record.sequence>after)records.push(record);if(records.length>=100)break}
+   const page=records.slice(0,100),nextCursor=page.at(-1)?.sequence||after;
+   return {events:page.map(row=>row.event),nextCursor,hasMore:nextCursor<index.nextSequence-1};
+  }
+  const pending=[],accepted=[];
+  for(const event of events){
+   const fingerprint=hex(await digest(canonical(event))),old=index.events[event.id];
+   if(old){if(old.digest!==fingerprint)throw storageError(409)}else{const sequence=index.nextSequence++;index.events[event.id]={sequence,digest:fingerprint};pending.push({sequence,event})}
+   accepted.push(event.id);
+  }
+  if(!pending.length)return {ok:true,accepted};
+  const path=prefix+'batches/'+pending[0].sequence+'-'+pending.at(-1).sequence+'-'+crypto.randomUUID()+'.json';
+  index.segments.push({from:pending[0].sequence,to:pending.at(-1).sequence,path});
+  try{await store.write(head,[[path,{version:1,records:pending}],[indexPath,index]],'Append private learning history');return {ok:true,accepted}}
+  catch(error){if(error.status!==409||retry===2)throw error}
+ }
+}
+
 export default { async fetch(request, env) {
+ const githubMode=env.LEARNING_STORAGE==='github';
+ if(env.LEARNING_STORAGE&&!['d1','github'].includes(env.LEARNING_STORAGE))return new Response('Storage mode unavailable',{status:503});
  const allowed = env.ALLOWED_ORIGIN || 'https://yuchao-jiang.github.io';
  const headers = {
   'Access-Control-Allow-Origin': allowed,
@@ -40,7 +114,7 @@ export default { async fetch(request, env) {
   'Access-Control-Allow-Headers': 'Content-Type,X-Family-Pin,Authorization',
   'Cache-Control': 'no-store', 'Vary': 'Origin', 'X-Content-Type-Options': 'nosniff'
  };
- const reply = (body, status = 200, extra = {}) => new Response(JSON.stringify({ ...body, storage: STORAGE }), {
+ const reply = (body, status = 200, extra = {}) => new Response(JSON.stringify({ ...body, storage: githubMode?'private-github-v1':STORAGE }), {
   status, headers: { ...headers, 'Content-Type': 'application/json', ...extra }
  });
  const origin = request.headers.get('Origin');
@@ -104,6 +178,7 @@ export default { async fetch(request, env) {
    if(request.method==='GET'){
     const after=Number(url.searchParams.get('after')||0);
     if(!Number.isSafeInteger(after)||after<0)return historyReply({error:'Invalid history cursor'},400);
+    if(githubMode)return historyReply(await githubHistory(env,child,'GET',undefined,after));
     const result=await env.PROGRESS_DB.prepare('SELECT seq, document FROM learning_events WHERE learner = ? AND seq > ? ORDER BY seq LIMIT 100').bind(child,after).all();
     return historyReply({events:result.results.map(row=>JSON.parse(row.document)),nextCursor:result.results.at(-1)?.seq||after,hasMore:result.results.length===100});
    }
@@ -112,6 +187,7 @@ export default { async fetch(request, env) {
    const kinds=['answer','check','hint','view','time','completion','start','import','restart','flag','reopen','parent-note'];
    const valid=event=>isObject(event)&&event.version===1&&event.learner===child&&typeof event.id==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(event.id)&&typeof event.activity==='string'&&event.activity.length>0&&event.activity.length<=100&&typeof event.questionId==='string'&&event.questionId.length<=150&&typeof event.attemptId==='string'&&event.attemptId.length<=150&&kinds.includes(event.type)&&(event.type!=='parent-note'||(event.data?.authorRole==='parent'&&typeof event.data?.text==='string'&&event.data.text.trim().length>0&&event.data.text.length<=8000))&&typeof event.at==='string'&&Number.isFinite(Date.parse(event.at))&&isObject(event.question)&&isObject(event.data)&&new TextEncoder().encode(JSON.stringify(event)).length<=64000;
    if(!isObject(payload)||payload.historyVersion!==1||!Array.isArray(payload.events)||payload.events.length<1||payload.events.length>20||!payload.events.every(valid))return historyReply({error:'Invalid history batch'},400);
+   if(githubMode)return historyReply(await githubHistory(env,child,'POST',payload.events));
    const stable=value=>JSON.stringify(value,(_,item)=>isObject(item)?Object.fromEntries(Object.keys(item).sort().map(key=>[key,item[key]])):item);
    const accepted=[];
    for(const event of payload.events){
@@ -124,6 +200,7 @@ export default { async fetch(request, env) {
   }
   // Both reads and writes are authenticated before touching learner records.
   if (request.method === 'GET') {
+   if(githubMode)return reply(await githubProgress(env,child,'GET'));
    const row = await env.PROGRESS_DB.prepare('SELECT document, revision FROM progress WHERE child = ?').bind(child).first();
    return row ? reply({ exists: true, data: JSON.parse(row.document), sha: row.revision }) : reply({ exists: false, data: null });
   }
@@ -133,6 +210,7 @@ export default { async fetch(request, env) {
   catch (error) { return reply({ error: error.message === 'Save too large' ? error.message : 'Invalid JSON' }, error.message === 'Save too large' ? 413 : 400); }
   if (!isObject(payload) || payload.version !== 1 || payload.child !== child || !isObject(payload.data) ||
       !(payload.sha == null || typeof payload.sha === 'string')) return reply({ error: 'Invalid save format' }, 400);
+  if(githubMode)return reply(await githubProgress(env,child,'POST',payload));
   const revision = crypto.randomUUID();
   const document = JSON.stringify({ version: 1, child, data: payload.data, updatedAt: new Date().toISOString() });
   // Conditional SQL makes stale/concurrent writes fail atomically.
@@ -141,8 +219,10 @@ export default { async fetch(request, env) {
    : await env.PROGRESS_DB.prepare('UPDATE progress SET document = ?, revision = ? WHERE child = ? AND revision = ?').bind(document, revision, child, payload.sha).run();
   if (result.meta.changes !== 1) return reply({ error: 'Newer private save found. Load it before saving again.', code: 'CONFLICT' }, 409);
   return reply({ ok: true, sha: revision });
- } catch {
+ } catch (error) {
+  if(error.status===409)return reply({error:'Newer private record or conflicting event found. Reload and retry.',code:'CONFLICT'},409);
   // Never return database details, saved answers, or credentials in error messages.
   return reply({ error: 'Private storage unavailable. Try again later.' }, 503);
  }
 }};
+

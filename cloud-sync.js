@@ -79,7 +79,8 @@
    const headers=credential.passphrase!==undefined?{'X-Family-Pin':credential.passphrase}:{Authorization:'Bearer '+credential.token};
    const response=await fetch(address,{method,cache:'no-store',headers:{...headers,...(data!==undefined?{'Content-Type':'application/json'}:{})},...(data!==undefined?{body:JSON.stringify(data)}:{})});
    const body=await response.json();
-   if(body.storage!=='private-d1-v1')throw Error('This endpoint does not support private storage. Ask a parent to finish setup.');
+   if(!['private-d1-v1','private-github-v1'].includes(body.storage))throw Error('This endpoint does not support private storage. Ask a parent to finish setup.');
+   window.ADVENTURE_SYNC_STORAGE=body.storage;
    if(!response.ok){if(response.status===401&&credential.token)clearSession();throw Error(body.error||'Cloud connection failed')}
    return body;
  }
@@ -276,4 +277,5 @@
    autoSync();
  }
 })();
+
 
