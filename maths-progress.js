@@ -58,7 +58,14 @@
   }
   return [...byQuestion].filter(([,occurrences])=>occurrences.some(o=>o.firstWrong||o.wrong)).map(([id,occurrences])=>({id,occurrences,latest:occurrences.at(-1),needsPractice:occurrences.at(-1).wrong}));
  }
+ const parts=[{id:'part-1',label:'Part 1',ids:[12,13,14,15],minutes:12},{id:'part-2',label:'Part 2',ids:[16,17,18,19,20],minutes:12}];
+ const partForIds=ids=>parts.find(part=>Array.isArray(ids)&&stable(part.ids)===stable(ids));
+ function nextPart(value){
+  const completed=records(value).filter(record=>!record.preview&&record.attempt?.phase==='done');
+  const done=part=>completed.some(record=>part.ids.every(id=>record.attempt.ids.includes(id)));
+  return done(parts[0])&&!done(parts[1])?parts[1].id:parts[0].id;
+ }
  const isPreview=(value,key)=>value.attemptTags?.[key]?.preview===true;
- const api={KEY,normalize,merge,stable,records,mistakes,isPreview};
+ const api={KEY,normalize,merge,stable,records,mistakes,isPreview,parts,partForIds,nextPart};
  root.AdventureMaths=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);
