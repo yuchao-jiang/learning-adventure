@@ -11,7 +11,7 @@
  if(child==='jason'&&!mathsPage){parentSettings=document.createElement('details');parentSettings.style.marginTop='12px';const summary=document.createElement('summary');summary.textContent='Parent settings';parentSettings.append(summary);document.querySelector?.('header')?.append(parentSettings)}
  if(child==='emily'){const saveButton=document.createElement('button');saveButton.type='button';saveButton.textContent='🌟 Keep My Stars Safe!';saveButton.style.cssText='margin:12px 0;padding:12px 18px;border-radius:12px;background:#d9f3e4;border:2px solid #39976e;font-weight:700';const status=document.createElement('p');status.id='emily-cloud-status';status.setAttribute('role','status');const hub=document.getElementById('hub');if(hub){hub.append(saveButton,status);saveButton.addEventListener('click',async()=>{saveButton.disabled=true;status.textContent='Saving…';const ok=await save();status.textContent=ok?'🎉 Your stars and answers are safe!':'Cloud save did not finish. Progress remains on this device.';saveButton.disabled=false})}}
  if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent=mathsPage?'Loading your work…':'☁️ Checking saved progress…';(parentSettings||jasonHost)?.append(indicator)}
- let sha=null,cloudExists=false,jasonExtras={};
+ let sha=null,cloudExists=false,jasonExtras={},emilyExtras={};
  const sessionKey='adventure-cloud-session-v1',deviceKey='adventure-cloud-device-v1';
  let pending=null,unlockPromise=null,remoteMaths=null,autoBusy=false,autoQueued=false;
  // Discard credentials from the earlier passphrase-based client.
@@ -21,7 +21,7 @@
  // Emily's persistence library stores versioned data; use its own storage key.
  function snapshot(){
    if(child==='emily'){
-     return {storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1'),rainbow:localStorage.getItem('emily-rainbow-v1')};
+     return {...emilyExtras,storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1'),rainbow:localStorage.getItem('emily-rainbow-v1')};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
    return {...jasonExtras,answers:localStorage.getItem('jason-reading-v1')||'{}',notes,...(localStorage.getItem(AdventureMaths.KEY)!==null?{maths:localStorage.getItem(AdventureMaths.KEY)}:{})};
@@ -190,6 +190,7 @@
        return true;
      }
      const remoteData=result.data.data;
+     emilyExtras={...remoteData};
      const cupcakeChanged=mergeCupcake(remoteData.cupcake);
      const parcelChanged=mergeParcel(remoteData.parcel);
      const rainbowChanged=mergeRainbow(remoteData.rainbow);
@@ -212,6 +213,7 @@
      // Refresh remote state before writing so a second device cannot silently replace it.
      const latest=await request('GET',session);sha=latest.sha||null;cloudExists=!!latest.exists;
      if(cloudExists&&child==='jason')mergeJason(latest.data.data);
+     if(cloudExists&&child==='emily')emilyExtras={...latest.data.data};
      if(cloudExists&&child==='emily'&&typeof latest.data.data.raw==='string')mergeEmily(latest.data.data.raw);
      if(cloudExists&&child==='emily'&&typeof latest.data.data.shop==='string'){
        try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remote,...own}))}catch(e){}
@@ -276,4 +278,5 @@
    autoSync();
  }
 })();
+
 
