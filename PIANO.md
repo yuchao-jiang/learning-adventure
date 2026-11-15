@@ -11,7 +11,7 @@ existing child activities, and adds no parent/admin panel.
   20 (starlight stage) and 30 (concert) days. Days continue accumulating afterward.
 - Days on which both children check in count as shared duet lights. The other
   child's cloud days are loaded through the same authenticated family session.
-- The tiny piano plays only after sound is enabled. Audio is generated in the
+- The tiny piano is ready to play on the first key tap; the sound button can mute\n  it. Audio starts only after a user interaction and resumes the browser audio\n  context before playing. Audio is generated in the
   browser; there are no audio downloads or outside services. Reduced-motion
   preferences turn off scene animations.
 
