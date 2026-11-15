@@ -9,7 +9,10 @@ existing child activities, and adds no parent/admin panel.
   reset anything. There is no competitive ranking or reminder schedule.
 - Rewards arrive at 3 (buddy hatches), 5 (dance/flower), 10 (cottage), 15 (violin),
   20 (starlight stage) and 30 (concert) days. Days continue accumulating afterward.
-- Days on which both children check in count as shared duet lights. The other
+- Days on which both children check in count as shared duet days. The first
+  duet unlocks a permanent rainbow, glowing music orb and fireflies. The second
+  check-in on a shared day gets a special duet celebration; Again! replays only
+  the visual magic without changing counts or playing extra sound. The other
   child's cloud days are loaded through the same authenticated family session.
 - The tiny piano plays only after sound is enabled. Audio is generated in the
   browser; there are no audio downloads or outside services. Reduced-motion
