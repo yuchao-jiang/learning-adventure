@@ -46,3 +46,12 @@ API authentication, immutable/idempotent inserts, learner isolation and paginati
 Rainbow snapshot tests cover restoration and restarting without resurrecting old
 completion. Browser smoke checks exercise Jason answer changes/flags/phase timing,
 Emily answer reopening and writing changes, Rainbow recording and parent review.
+
+
+Music Island checks cover one check-in per local calendar day, cumulative
+progress without streak resets, both learners' independent records, additive
+merges, shared duet days, every reward threshold, malformed/local storage,
+private authentication, conflict retries, and preservation of all existing
+worksheet/reading/maths fields when piano and learning pages save. Chromium
+checks cover mobile/desktop overflow, duplicate prevention, reload, pet hatching,
+all milestone scenery and reduced-motion behavior using synthetic check-ins.

@@ -199,3 +199,6 @@ test('Emily deliberately reopened answers retain newer revisions across cloud sa
  const remote=JSON.stringify({version:2,answers:{'e-1':{value:0,checked:true,hint:false,updatedAt:10}}});
  const app=await setup('emily',{'emily-adventure-v2':raw},{raw:remote});await app.window.adventureCloudSave();assert.equal(JSON.parse(app.writes.at(-1).data.raw).answers['e-1'].value,1);assert.equal(JSON.parse(app.writes.at(-1).data.raw).answers['e-1'].checked,false);
 });
+
+test('learning-page saves retain piano data and other private snapshot extensions for Emily',async()=>{const piano=JSON.stringify({version:1,days:{'2026-11-01':{at:'2026-11-01T10:00:00Z',tasks:['piece']}}});const app=await setup('emily',{}, {raw:JSON.stringify({version:2,answers:{}}),piano,extraPrivateField:'retain'});await app.window.adventureCloudSave();assert.equal(app.writes.at(-1).data.piano,piano);assert.equal(app.writes.at(-1).data.extraPrivateField,'retain')});
+test('Jason reading saves preserve piano data that exists only in private cloud',async()=>{const piano='{"version":1,"days":{}}';const app=await setup('jason',{}, {answers:'{}',piano});await app.window.adventureCloudSave();assert.equal(app.writes.at(-1).data.piano,piano)});
