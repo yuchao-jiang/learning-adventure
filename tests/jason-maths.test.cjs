@@ -18,7 +18,7 @@ function setup(saved = {}) {
     });
     return elements.get(id);
   }
-  const values = new Map(Object.entries(saved));
+  const dispatched=[];const values = new Map(Object.entries(saved));
   const storage = {
     getItem: k => values.has(k) ? values.get(k) : null,
     setItem: (k, v) => values.set(k, String(v)),
@@ -31,13 +31,13 @@ function setup(saved = {}) {
     }), createTextNode: v => v },
     localStorage: storage, confirm: () => true,
     AdventureMaths: require('../maths-progress.js'),AdventureNextSet:require('../maths-next-set.js'),
-    crypto: require('node:crypto').webcrypto, Event, window: { dispatchEvent() {} },
+    crypto: require('node:crypto').webcrypto, Event, window: { dispatchEvent(event) {dispatched.push(event)} },
     setInterval: () => 1, clearInterval: () => {},
     Date, Math, JSON, Object, String, Number, Array
   };
   vm.createContext(context);
   vm.runInContext(source, context);
-  return { context, elements, storage, values, run: code => vm.runInContext(code, context) };
+  return { context, elements, storage, values, dispatched, run: code => vm.runInContext(code, context) };
 }
 
 test('missions have child-friendly labels and checking instructions', () => {
@@ -201,3 +201,6 @@ test('an existing nine-question practice keeps its questions and original deadli
  assert.equal(app.run('store.session.deadline'),deadline);
  assert.equal(app.run('store.session.answers[12]'),2);
 });
+
+
+test('finished maths emits an urgent sync event with the completed attempt saved locally first',()=>{const app=setup();app.run('startSession();nextPhase();nextPhase()');assert.equal(app.dispatched.at(-1).urgent,true);assert.equal(JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1')).session.phase,'done')});

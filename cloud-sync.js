@@ -13,10 +13,10 @@
  if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent=mathsPage?'Loading your work…':'☁️ Checking saved progress…';(parentSettings||jasonHost)?.append(indicator)}
  let sha=null,cloudExists=false,jasonExtras={},emilyExtras={};
  const sessionKey='adventure-cloud-session-v1',deviceKey='adventure-cloud-device-v1';
- let pending=null,unlockPromise=null,remoteMaths=null,autoBusy=false,autoQueued=false;
+ let pending=null,unlockPromise=null,remoteMaths=null,autoQueued=false,autoPromise=null,reloadNeeded=false,autoUrgent=false;
  // Discard credentials from the earlier passphrase-based client.
  try{sessionStorage.removeItem('adventure-family-passphrase-session-v2');sessionStorage.removeItem('adventure-family-pin-session')}catch{}
- const say=t=>{const indicator=document.getElementById('cloud-sync-status');if(indicator)indicator.textContent=mathsPage?(/failed|retry|not configured|locked|unlock|Could not/i.test(t)?'Saved on this device.':/Syncing|Saving/i.test(t)?'Saving…':/synced|saved to your private/i.test(t)?'Saved ✓':'Ready to play.'):t;const emily=document.getElementById('emily-cloud-status');if(emily)emily.textContent=t};
+ const say=t=>{const indicator=document.getElementById('cloud-sync-status');if(indicator){indicator.title=t;let label=t,state='ready';if(mathsPage){if(/locked|unlock/i.test(t)){label='Saved here · Cloud locked';state='locked'}else if(/failed|retry|Could not|not configured|unavailable/i.test(t)){label='Saved here · Waiting to sync';state='pending'}else if(/Syncing|Saving/i.test(t)){label='Saving…';state='saving'}else if(/synced|saved to your private/i.test(t)){label='Saved ✓';state='synced'}else label='Saved on this device.'}indicator.textContent=label;indicator.setAttribute('data-sync-state',state)}const emily=document.getElementById('emily-cloud-status');if(emily)emily.textContent=t};
  const endpoint=url+'?child='+encodeURIComponent(child);
  // Emily's persistence library stores versioned data; use its own storage key.
  function snapshot(){
@@ -80,7 +80,7 @@
    const response=await fetch(address,{method,cache:'no-store',headers:{...headers,...(data!==undefined?{'Content-Type':'application/json'}:{})},...(data!==undefined?{body:JSON.stringify(data)}:{})});
    const body=await response.json();
    if(body.storage!=='private-d1-v1')throw Error('This endpoint does not support private storage. Ask a parent to finish setup.');
-   if(!response.ok){if(response.status===401&&credential.token)clearSession();throw Error(body.error||'Cloud connection failed')}
+   if(!response.ok){if(response.status===401&&credential.token)clearSession();const error=Error(body.error||'Cloud connection failed');error.status=response.status;throw error}
    return body;
  }
  function request(method,session,data){
@@ -174,19 +174,19 @@
    localStorage.setItem(key,raw);
    return {changed:raw!==localRaw,completed:Object.values(answers).filter(v=>v?.checked===true).length};
  }
- async function load(interactive=false){
+ async function load(interactive=false,deferReload=false){
    if(!url){say('Cloud connection is not configured.');return false}
    try{
      const session=await getSession(interactive);
      if(!session){say('Cloud progress is locked. Ask a parent to unlock it. Local work is available.');return false}
      window.AdventureHistory?.sync();
      const result=await request('GET',session);sha=result.sha||null;cloudExists=!!result.exists;
-     if(mathsPage)remoteMaths=result.exists&&typeof result.data?.data?.maths==='string'?AdventureMaths.stable(AdventureMaths.normalize(JSON.parse(result.data.data.maths))):null;
+     if(child==='jason')remoteMaths=result.exists&&typeof result.data?.data?.maths==='string'?AdventureMaths.stable(AdventureMaths.normalize(JSON.parse(result.data.data.maths))):null;
      if(!result.exists){say('No cloud save yet.');return true}
      if(child==='jason'){
        const changed=mergeJason(result.data.data);
        say('🌈 Cloud progress synced.');
-       if(changed&&!mathsPage)location.reload()
+       if(changed&&!mathsPage){if(deferReload)reloadNeeded=true;else location.reload()}
        return true;
      }
      const remoteData=result.data.data;
@@ -210,6 +210,7 @@
    try{
      const session=await getSession(interactive);
      if(!session)return false;
+     for(let attempt=0;attempt<3;attempt++){
      // Refresh remote state before writing so a second device cannot silently replace it.
      const latest=await request('GET',session);sha=latest.sha||null;cloudExists=!!latest.exists;
      if(cloudExists&&child==='jason')mergeJason(latest.data.data);
@@ -220,8 +221,9 @@
      }
      if(cloudExists&&child==='emily'&&typeof latest.data.data.cupcake==='string')mergeCupcake(latest.data.data.cupcake);
      if(cloudExists&&child==='emily'){mergeParcel(latest.data.data.parcel);mergeRainbow(latest.data.data.rainbow)}
-     const result=await request('POST',session,snapshot());sha=result.sha;cloudExists=true;window.AdventureHistory?.sync();say('🌟 Progress saved to your private family storage.');return true;
-   }catch(e){say((mathsPage?'Saved on this device. Cloud save failed: ':'Could not save: ')+e.message);return false}
+     try{const result=await request('POST',session,snapshot());sha=result.sha;cloudExists=true;window.AdventureHistory?.sync();window.adventureSyncError=null;say(autoQueued?'Saved on this device. Syncing…':'🌟 Progress saved to your private family storage.');return true}catch(error){if(error.status!==409||attempt===2)throw error}
+     }
+   }catch(e){window.adventureSyncError=e.message;say((mathsPage?'Saved on this device. Cloud save failed: ':'Could not save: ')+e.message);return false}
  }
  if(child==='emily'){
    window.addEventListener('adventure-progress-changed',()=>{
@@ -231,7 +233,8 @@
    });
  }
  window.adventureCloudSave=save;
- window.adventureCloudLoad=()=>mathsPage?autoSync():load(true);
+ async function unlockAndSync(){if(!url){say('Cloud connection is not configured.');return false}try{const session=await getSession(true);return session?await autoSync():false}catch(e){window.adventureSyncError=e.message;say('Cloud load failed: '+e.message);return false}}
+ window.adventureCloudLoad=()=>child==='jason'?(mathsPage?autoSync():unlockAndSync()):load(true);
  window.adventureCloudLock=async()=>{
    const session=storedSession();clearSession();clearTimeout(pending);if(mathsPage){unlock.hidden=false;lock.hidden=true}
    try{if(session)await api(url+'/session','DELETE',session);say('Cloud locked. This device is forgotten. Local work remains here.')}
@@ -244,39 +247,44 @@
    catch(e){say('Could not forget devices: '+e.message)}finally{consent.passphrase=''}
  };
  const controls=document.createElement('div');controls.className='actions';
- const unlock=document.createElement('button');unlock.type='button';unlock.textContent='🔐 Unlock private cloud progress';unlock.addEventListener('click',()=>load(true));
+ const unlock=document.createElement('button');unlock.type='button';unlock.textContent='🔐 Unlock private cloud progress';unlock.addEventListener('click',()=>child==='jason'?unlockAndSync():load(true));
  const lock=document.createElement('button');lock.type='button';lock.textContent='Lock cloud';lock.addEventListener('click',window.adventureCloudLock);
  const forgetAll=document.createElement('button');forgetAll.type='button';forgetAll.textContent='Forget all trusted devices';forgetAll.addEventListener('click',window.adventureCloudForgetAll);
  controls.append(unlock,lock,forgetAll);
  const review=document.createElement('a');review.href='./learning-review.html';review.textContent='Private learning review';controls.append(review);
  if(!mathsPage)(child==='emily'?document.getElementById('hub'):(parentSettings||jasonHost))?.append(controls);
- async function autoSync(){
-   if(autoBusy){autoQueued=true;return}
+ function autoSync(){
+   if(autoPromise)return autoPromise
+   autoPromise=runAutoSync().finally(()=>{autoPromise=null});return autoPromise;
+ }
+ async function runAutoSync(){
    await initialLoad;
-   if(autoBusy){autoQueued=true;return}
    const unlocked=!!storedSession();unlock.hidden=unlocked;lock.hidden=!unlocked;
-   if(!url||!unlocked){say(!url?'Saved on this device. Cloud connection is not configured.':'Saved on this device. Ask a parent to unlock automatic cloud sync.');return}
-   autoBusy=true;autoQueued=false;
+   if(!url||!unlocked){say(!url?'Saved on this device. Cloud connection is not configured.':'Saved on this device. Cloud is locked. Unlock private progress on Jason’s roadmap.');return false}
+   autoQueued=false;autoUrgent=false;let succeeded=false;
    try{
-     if(!await load(false))return;
+     if(!await load(false,true))return false;
      const raw=localStorage.getItem(AdventureMaths.KEY);
      const local=raw===null?null:AdventureMaths.stable(AdventureMaths.normalize(JSON.parse(raw)));
-     if(local!==null&&local!==remoteMaths){say('Saved on this device. Syncing…');await save(false)}
-     else say('✓ All progress synced automatically.');
-   }catch(e){say('Saved on this device. Sync will retry: '+e.message)}
-   finally{autoBusy=false;unlock.hidden=!!storedSession();lock.hidden=!storedSession();if(autoQueued){clearTimeout(pending);pending=setTimeout(autoSync,1200)}}
+     if(local!==null&&local!==remoteMaths){say('Saved on this device. Syncing…');succeeded=await save(false)}
+     else{succeeded=true;say('✓ All progress synced automatically.')}
+     return succeeded;
+   }catch(e){window.adventureSyncError=e.message;say('Saved on this device. Sync will retry: '+e.message);return false}
+   finally{unlock.hidden=!!storedSession();lock.hidden=!storedSession();if(autoQueued){say(storedSession()?'Saved on this device. Syncing…':'Saved on this device. Cloud is locked.');clearTimeout(pending);pending=setTimeout(autoSync,autoUrgent?0:1200);autoUrgent=false}else if(succeeded&&reloadNeeded){reloadNeeded=false;location.reload()}}
  }
- initialLoad=mathsPage?Promise.resolve():load();
- if(mathsPage){
-   window.addEventListener('adventure-maths-changed',()=>{
-     autoQueued=true;say(storedSession()?'Saved on this device. Syncing…':'Saved on this device. Cloud is locked.');
-     clearTimeout(pending);pending=setTimeout(autoSync,1200);
+ initialLoad=child==='jason'?Promise.resolve():load();
+ if(child==='jason'){
+   window.addEventListener('adventure-maths-changed',event=>{
+     autoQueued=true;autoUrgent=autoUrgent||!!event?.urgent;say(storedSession()?'Saved on this device. Syncing…':'Saved on this device. Cloud is locked.');
+     clearTimeout(pending);if(event?.urgent)autoSync();else pending=setTimeout(autoSync,1200);
    });
-   for(const event of ['focus','online'])window.addEventListener(event,autoSync);
-   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')autoSync()});
+   for(const event of ['focus','online','pageshow'])window.addEventListener(event,autoSync);
+   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'||mathsPage){if(mathsPage&&document.visibilityState==='hidden'){autoQueued=true;autoUrgent=true}autoSync()}});
    setInterval(()=>{if(document.visibilityState!=='hidden')autoSync()},30000);
    autoSync();
  }
+
 })();
+
 
 
