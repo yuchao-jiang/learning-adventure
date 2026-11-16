@@ -62,3 +62,11 @@ roadmap before refreshing, restoring it on another device, urgent completion
 and hidden-page uploads, conflicting save retries and distinct locked/pending/
 confirmed save indicators. Browser checks use isolated devices and a mocked
 private endpoint; no live learner records are accessed or changed.
+
+
+Emily adaptive practice checks cover an incorrect first answer followed by a
+correct revision, correct-first/later-wrong exclusion, unknown imported answers,
+ungraded writing, persistent first-attempt evidence after event acknowledgement,
+private cloud merges and same-skill coverage in the next challenge. Browser
+checks exercise corrected answers, challenge generation/restoration and Jason's
+four subject entries.

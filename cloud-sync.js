@@ -21,10 +21,16 @@
  // Emily's persistence library stores versioned data; use its own storage key.
  function snapshot(){
    if(child==='emily'){
-     return {...emilyExtras,storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1'),rainbow:localStorage.getItem('emily-rainbow-v1')};
+     return {...emilyExtras,storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1'),rainbow:localStorage.getItem('emily-rainbow-v1'),...(window.EmilyPractice?{firstAttempts:localStorage.getItem(window.EmilyPractice.KEY)||emilyExtras.firstAttempts||null,nextChallenge:localStorage.getItem(window.EmilyPractice.CHALLENGE_KEY)||emilyExtras.nextChallenge||null}:{})};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
    return {...jasonExtras,answers:localStorage.getItem('jason-reading-v1')||'{}',notes,...(localStorage.getItem(AdventureMaths.KEY)!==null?{maths:localStorage.getItem(AdventureMaths.KEY)}:{})};
+ }
+ function mergeEmilyPractice(data){
+   const model=window.EmilyPractice;if(!model)return;
+   if(typeof data.firstAttempts==='string'){const merged=model.merge(model.load(localStorage),JSON.parse(data.firstAttempts));localStorage.setItem(model.KEY,JSON.stringify(merged))}
+   if(typeof data.nextChallenge==='string'){const local=JSON.parse(localStorage.getItem(model.CHALLENGE_KEY)||'null'),remote=JSON.parse(data.nextChallenge);localStorage.setItem(model.CHALLENGE_KEY,JSON.stringify(model.mergeChallenge(local,remote)))}
+   window.dispatchEvent(new Event('emily-practice-restored'));
  }
  function mergeRainbow(raw){
    if(typeof raw!=='string')return false;
@@ -191,6 +197,7 @@
      }
      const remoteData=result.data.data;
      emilyExtras={...remoteData};
+     mergeEmilyPractice(remoteData);
      const cupcakeChanged=mergeCupcake(remoteData.cupcake);
      const parcelChanged=mergeParcel(remoteData.parcel);
      const rainbowChanged=mergeRainbow(remoteData.rainbow);
@@ -214,7 +221,7 @@
      // Refresh remote state before writing so a second device cannot silently replace it.
      const latest=await request('GET',session);sha=latest.sha||null;cloudExists=!!latest.exists;
      if(cloudExists&&child==='jason')mergeJason(latest.data.data);
-     if(cloudExists&&child==='emily')emilyExtras={...latest.data.data};
+     if(cloudExists&&child==='emily'){emilyExtras={...latest.data.data};mergeEmilyPractice(latest.data.data)}
      if(cloudExists&&child==='emily'&&typeof latest.data.data.raw==='string')mergeEmily(latest.data.data.raw);
      if(cloudExists&&child==='emily'&&typeof latest.data.data.shop==='string'){
        try{const remote=JSON.parse(latest.data.data.shop),own=JSON.parse(localStorage.getItem('emily-shop-v4')||'{}');localStorage.setItem('emily-shop-v4',JSON.stringify({...remote,...own}))}catch(e){}
@@ -285,6 +292,7 @@
  }
 
 })();
+
 
 
 
