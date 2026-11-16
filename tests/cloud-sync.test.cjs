@@ -14,29 +14,29 @@ const token = 'a'.repeat(64);
 async function setup(child, local, remote, options = {}) {
   const localStorage = options.localStorage || storage(local);
   const sessionStorage = options.sessionStorage || storage(options.locked ? {} : { [sessionKey]: JSON.stringify({ token, expiresAt: Date.now() + 100000, endpoint: 'https://sync.test' }) });
-  let reloads = 0; const writes = [], requests = [], scheduled=[],events={};
+  let reloads = 0; const writes = [], requests = [], scheduled=[],events={},created=[],reloadPositions=[];
   const element = () => {
     const listeners = {}, password = { value: 'test-family-passphrase' }, remember = { checked: !!options.remember };
-    return { style: {}, append() {}, setAttribute() {}, remove() {},
+    const item={ style: {}, append() {}, setAttribute(name,value) {this[name]=value}, remove() {},
       addEventListener(name, callback) { listeners[name] = callback; },
       querySelector(selector) { return selector.includes('passphrase') ? password : remember; },
       showModal() { this.returnValue = options.cancel ? 'cancel' : 'unlock'; listeners.close(); }
-    };
+    };created.push(item);return item;
   };
   const window = { ADVENTURE_SYNC_URL: options.url || 'https://sync.test', addEventListener(name,callback) { events[name]=callback; } };
   const context = { AdventureMaths: require('../maths-progress.js'), window, localStorage, sessionStorage, document: { body: { dataset: { learner: child, activity: options.mathsPage?'maths':'' }, append() {} },
-    createElement: element, getElementById: element,addEventListener(name,callback){events[name]=callback},visibilityState:'visible' }, location: { reload() { reloads++; } },
+    createElement: element, getElementById: id=>created.find(item=>item.id===id)||element(),addEventListener(name,callback){events[name]=callback},visibilityState:'visible' }, location: { reload() { reloads++;reloadPositions.push(writes.length); } },
     setTimeout:(fn)=>{scheduled.push(fn);return scheduled.length},clearTimeout(){},setInterval(){}, fetch: async (url, fetchOptions) => {
       requests.push({ url, method: fetchOptions.method, headers: fetchOptions.headers });
       if(options.offline)throw Error('Offline');
       if(options.unauthorized)return {ok:false,status:401,json:async()=>({storage:'private-d1-v1',error:'Cloud session expired'})};
       if(url.endsWith('/session') || url.endsWith('/sessions'))return {ok:true,json:async()=>({storage:'private-d1-v1',token,expiresAt:Date.now()+30*86400000})};
-      if (fetchOptions.method === 'POST') { writes.push(JSON.parse(fetchOptions.body)); return { ok: true, json: async () => ({ sha: 'new', storage: 'private-d1-v1' }) }; }
+      if (fetchOptions.method === 'POST') { if(options.conflictOnce){options.conflictOnce=false;return {ok:false,status:409,json:async()=>({storage:'private-d1-v1',error:'Newer save found'})}}const payload=JSON.parse(fetchOptions.body);writes.push(payload);if(options.liveRemote)remote=payload.data; return { ok: true, json: async () => ({ sha: 'new', storage: 'private-d1-v1' }) }; }
       return { ok: true, json: async () => ({ exists: true, sha: 'old', data: { data: remote }, ...(options.legacy ? {} : { storage: 'private-d1-v1' }) }) };
     } };
   vm.runInNewContext(source, context);
   if (!options.locked) await window.adventureCloudLoad();
-  return { localStorage, sessionStorage, window, writes, requests,events,scheduled, reloads: () => reloads };
+  return { localStorage, sessionStorage, window, writes, requests,events,scheduled, reloads: () => reloads,reloadPositions,document:context.document,status:()=>created.find(item=>item.id==='cloud-sync-status') };
 }
 test('remote Jason drafts cannot overwrite locally submitted answers', async () => {
   const app = await setup('jason', { 'jason-reading-v1': JSON.stringify({ '1-1': { answer: 'B' }, _submitted: { 1: { correct: 1 } } }) },
@@ -202,3 +202,12 @@ test('Emily deliberately reopened answers retain newer revisions across cloud sa
 
 test('learning-page saves retain piano data and other private snapshot extensions for Emily',async()=>{const piano=JSON.stringify({version:1,days:{'2026-11-01':{at:'2026-11-01T10:00:00Z',tasks:['piece']}}});const app=await setup('emily',{}, {raw:JSON.stringify({version:2,answers:{}}),piano,extraPrivateField:'retain'});await app.window.adventureCloudSave();assert.equal(app.writes.at(-1).data.piano,piano);assert.equal(app.writes.at(-1).data.extraPrivateField,'retain')});
 test('Jason reading saves preserve piano data that exists only in private cloud',async()=>{const piano='{"version":1,"days":{}}';const app=await setup('jason',{}, {answers:'{}',piano});await app.window.adventureCloudSave();assert.equal(app.writes.at(-1).data.piano,piano)});
+
+
+const completedSet2=()=>{const record=JSON.parse(mathsRecord());record.session={...record.session,id:'completed-set-2',ids:[16,17,18,19,20],phase:'done',answers:{16:2,17:0,18:1,19:4,20:3},first:{16:2,17:0,18:1,19:4,20:3}};record.history=[{id:'completed-set-2',week:1,total:5,first:5,checked:5,at:'2026-11-16T10:00:00Z',ids:[16,17,18,19,20],answers:record.session.answers,firstAnswers:record.session.first}];return JSON.stringify(record)};
+test('opening Jason roadmap recovers completed Set 2 before reloading its display',async()=>{const app=await setup('jason',{'jason-maths-two-weeks-v1':completedSet2()},{answers:'{}',notes:{},piano:'keep-piano'},{liveRemote:true});await waitSync();assert.equal(app.writes.length,1);assert.equal(JSON.parse(app.writes[0].data.maths).session.id,'completed-set-2');assert.equal(app.writes[0].data.piano,'keep-piano');assert(app.reloadPositions.every(writes=>writes>0));});
+test('a second maths device restores all Set 2 answers from the recovered cloud snapshot',async()=>{const source=await setup('jason',{'jason-maths-two-weeks-v1':completedSet2()},{answers:'{}',notes:{}},{liveRemote:true});await waitSync();const receiver=await setup('jason',{},source.writes.at(-1).data,{mathsPage:true,liveRemote:true});await waitSync();const restored=JSON.parse(receiver.localStorage.getItem('jason-maths-two-weeks-v1'));assert.equal(restored.session.phase,'done');assert.equal(restored.session.answers[20],3);assert.equal(restored.history[0].checked,5);assert.equal(receiver.status().textContent,'Saved ✓');});
+test('urgent completion sync starts without waiting for the debounce timer',async()=>{const app=await setup('jason',{}, {answers:'{}',notes:{}},{mathsPage:true,liveRemote:true});await waitSync();app.localStorage.setItem('jason-maths-two-weeks-v1',completedSet2());app.events['adventure-maths-changed']({urgent:true});await waitSync();assert.equal(app.writes.length,1);assert.equal(JSON.parse(app.writes[0].data.maths).session.phase,'done');});
+test('hiding a maths page immediately attempts to upload pending local work',async()=>{const app=await setup('jason',{}, {answers:'{}',notes:{}},{mathsPage:true,liveRemote:true});await waitSync();app.localStorage.setItem('jason-maths-two-weeks-v1',completedSet2());app.document.visibilityState='hidden';await app.events.visibilitychange();await waitSync();assert.equal(app.writes.length,1);});
+test('a conflicting revision is fetched and retried rather than reported as saved',async()=>{const app=await setup('jason',{'jason-maths-two-weeks-v1':completedSet2()},{answers:'{}',notes:{},piano:'retain'},{mathsPage:true,conflictOnce:true,liveRemote:true});await waitSync();assert.equal(app.requests.filter(request=>request.method==='POST').length,2);assert.equal(app.writes.length,1);assert.equal(app.writes[0].data.piano,'retain');assert.equal(app.status().textContent,'Saved ✓');});
+test('locked, failed and confirmed maths sync have distinct truthful statuses',async()=>{const locked=await setup('jason',{}, {},{mathsPage:true,locked:true});await waitSync();assert.equal(locked.status().textContent,'Saved here · Cloud locked');const failed=await setup('jason',{}, {},{mathsPage:true,offline:true});await waitSync();assert.equal(failed.status().textContent,'Saved here · Waiting to sync');assert.notEqual(failed.status()['data-sync-state'],'synced');});

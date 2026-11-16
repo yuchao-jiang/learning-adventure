@@ -55,3 +55,10 @@ private authentication, conflict retries, and preservation of all existing
 worksheet/reading/maths fields when piano and learning pages save. Chromium
 checks cover mobile/desktop overflow, duplicate prevention, reload, pet hatching,
 all milestone scenery and reduced-motion behavior using synthetic check-ins.
+
+
+Maths sync recovery checks cover uploading a completed Set 2 from Jason's
+roadmap before refreshing, restoring it on another device, urgent completion
+and hidden-page uploads, conflicting save retries and distinct locked/pending/
+confirmed save indicators. Browser checks use isolated devices and a mocked
+private endpoint; no live learner records are accessed or changed.
