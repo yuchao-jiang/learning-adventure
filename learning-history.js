@@ -8,7 +8,7 @@
   function record(activity,questionId,type,data={},attemptId){
    try{
     const event={version:1,id:uuid(),learner,activity,questionId:String(questionId),attemptId:attemptId||attempt(activity),type,at:new Date(lastAt=Math.max(now(),lastAt+1)).toISOString(),question:json(registry.get(activity+':'+questionId)||{}),data:json(data)};
-    storage.setItem(prefix+event.id,JSON.stringify(event));if(type==='answer'||type==='check')storage.setItem('adventure-history-baseline-v1:'+learner+':'+activity+':'+event.attemptId+':'+questionId,'1');notify({ok:true,event});return event;
+    storage.setItem(prefix+event.id,JSON.stringify(event));if(learner==='emily'&&type==='answer')root.EmilyPractice?.capture(storage,event,!storage.getItem('adventure-history-baseline-v1:'+learner+':'+activity+':'+event.attemptId+':'+questionId));if(type==='answer'||type==='check')storage.setItem('adventure-history-baseline-v1:'+learner+':'+activity+':'+event.attemptId+':'+questionId,'1');notify({ok:true,event});return event;
    }catch(error){notify({ok:false,error:'Learning history could not be saved on this device.'});return null}
   }
   function register(activity,questionId,question){registry.set(activity+':'+questionId,json(question))}
@@ -92,3 +92,4 @@
  root.addEventListener('pagehide',()=>{flushWriting();flushTime();sync()});root.addEventListener('online',()=>sync());
  setInterval(()=>{flushTime();viewport()},10000);setInterval(()=>sync(),30000);
 })(globalThis);
+
