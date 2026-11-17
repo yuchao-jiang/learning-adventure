@@ -11,6 +11,11 @@
  const mistakes=value=>Object.values(normalize(value).records).filter(e=>!e.correct);
  const question=(prompt,options,correctIndex,skill)=>({prompt,options,correctIndex,skill});
  function variant(skill,round,source){const odd=round%2;
+  if(/reading inference/i.test(skill))return question('Mia held her umbrella tightly and watched dark clouds gather. What was she probably expecting?',['A rainy day','A snowy night','A hot sunny day'],0,skill);
+  if(/place value/i.test(skill))return question('Which is another way to show 52?',['4 tens and 12 ones','5 tens and 12 ones','2 tens and 5 ones'],0,skill);
+  if(/length fractions/i.test(skill))return question('A ribbon is cut into four equal lengths. One length is blue. What fraction of the whole ribbon is blue?',['One half','One quarter','Three quarters'],1,skill);
+  if(/reading data/i.test(skill))return question('Each star means one vote. Swings: ★★★★★. Slide: ★★★. Sandpit: ★★. Which received the fewest votes?',['Swings','Slide','Sandpit'],2,skill);
+  if(/position on a map/i.test(skill))return question('A map has two rows. Top row: School, Pond, Park. Bottom row: Shop, Library, Bridge. What is directly above the library?',['School','Pond','Park'],1,skill);
   if(/money multiplication/i.test(skill))return question(odd?'Three pencils cost 4 cents each. How much do they cost altogether?':'Four stickers cost 3 cents each. What is the total cost?',['7 cents','12 cents','16 cents'],1,skill);
   if(/money subtraction/i.test(skill))return question(odd?'You have 20 cents and spend 7 cents. How much is left?':'A ribbon costs 6 cents. You pay with 20 cents. How much change do you get?',odd?['13 cents','14 cents','27 cents']:['12 cents','14 cents','16 cents'],odd?0:1,skill);
   if(/money|addition/i.test(skill))return question(/money/i.test(skill)?(odd?'A pear costs 6 cents and an apple costs 8 cents. What is the total?':'A bun costs 7 cents and a plum costs 5 cents. What do they cost together?'):(odd?'There are 6 birds. Another 8 arrive. How many birds are there now?':'Lily has 7 shells and finds 5 more. How many shells does she have?'),odd?['12','14','16']:['10','12','14'],1,skill);

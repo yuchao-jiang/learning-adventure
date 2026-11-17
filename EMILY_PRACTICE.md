@@ -35,3 +35,13 @@ Jason's roadmap now has four subject entries: Math, English, Thinking Skills and
 Music. Existing reading sets are nested under English. Thinking Skills has an
 explicit coming-soon panel until a question set is supplied; no fake activity or
 progress is created.
+
+## The Lost Friendship Star
+
+`emily-pony.html` is a six-chapter, twelve-question pony adventure with no timer. It uses the parent-approved revised inference, vocabulary, flexible partitioning, quarter-length, graph and simple map questions. It awards six story gems and shows progress on a consistent five-star scale on Emily’s adventure hub. The optional ending asks for two sentences about helping a pony.
+
+`pony-progress.js` merges the latest answer per question, earliest known first answer, completed questions, hints and the latest writing draft. The private progress snapshot stores this in its `pony` field using existing authenticated D1 sync; no Worker or schema changes are needed. Pages without the pony library preserve that snapshot extension. Cloud access still requires an unlocked parent session. Local work remains available if offline or locked.
+
+The existing private learning journal records each answer, hint, active question time, completion and writing changes, with question wording, choices, story and diagram descriptions. First-wrong knowledge points join My Next Challenge, even after a correct retry. Historical unknown first answers are not inferred. The story gems are separate from the five progress stars.
+
+Validation: 128 automated tests pass. Chromium completes all twelve questions on a 390px screen, verifies wrong-then-correct retention, journal completion/writing events and writing restoration after reload. All verification uses synthetic local records, with external network requests blocked.
