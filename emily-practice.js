@@ -11,6 +11,17 @@
  const mistakes=value=>Object.values(normalize(value).records).filter(e=>!e.correct);
  const question=(prompt,options,correctIndex,skill)=>({prompt,options,correctIndex,skill});
  function variant(skill,round,source){const odd=round%2;
+  if(/text purpose/i.test(skill))return question('A note says: Come to our picnic on Sunday. Bring a hat! What is the note mainly doing?',['Inviting someone','Telling yesterday’s news','Explaining how a hat is made'],0,skill);
+  if(/vowel spellings/i.test(skill))return question('Read boat. Which word has the same middle vowel sound?',['bag','snow','sit'],1,skill);
+  if(/measuring length/i.test(skill))return question('A leaf starts at 2 cm and ends at 7 cm on a ruler. How long is the leaf?',['9 cm','7 cm','5 cm'],2,skill);
+  if(/missing part/i.test(skill))return question('You have 13 seeds and need 20. What is missing? 13 + □ = 20',['6','7','8'],1,skill);
+  if(/comparing area/i.test(skill))return question('All tiles are the same size. Mat A has 2 rows of 3 tiles. Mat B has 2 rows of 4 tiles. Which covers more floor?',['Mat A','Mat B','They cover the same amount'],1,skill);
+  if(/comparing capacity/i.test(skill))return question('Use the same cup for both containers. A bottle holds 5 full cups and a bowl holds 7. Which holds more?',['The bottle','The bowl','They hold the same amount'],1,skill);
+  if(/comparing mass/i.test(skill))return question('A clay dog balances 8 blocks. A clay cat balances 5 of the same blocks. Which is heavier?',['The dog','The cat','They have the same mass'],0,skill);
+  if(/equal sharing/i.test(skill))return question('Share 15 berries equally between three friends. How many does each get?',['3','4','5'],2,skill);
+  if(/pronoun reference/i.test(skill))return question('Mia picked up a book. She put it on the shelf. What does it mean?',['The book','Mia','The shelf'],0,skill);
+  if(/plural spelling/i.test(skill))return question('Finish the label: one fox, two ___.',['foxs','foxes','fox'],1,skill);
+  if(/contrasting ideas/i.test(skill))return question('Choose the word that shows a difference: Ben likes apples, ___ Mia likes pears.',['because','so','but'],2,skill);
   if(/reading inference/i.test(skill))return question('Mia held her umbrella tightly and watched dark clouds gather. What was she probably expecting?',['A rainy day','A snowy night','A hot sunny day'],0,skill);
   if(/place value/i.test(skill))return question('Which is another way to show 52?',['4 tens and 12 ones','5 tens and 12 ones','2 tens and 5 ones'],0,skill);
   if(/length fractions/i.test(skill))return question('A ribbon is cut into four equal lengths. One length is blue. What fraction of the whole ribbon is blue?',['One half','One quarter','Three quarters'],1,skill);
@@ -39,3 +50,4 @@
  function mergeChallenge(a,b){if(!a)return b;if(!b)return a;return (a.updatedAt||0)>=(b.updatedAt||0)?a:b}
  const api={KEY,CHALLENGE_KEY,normalize,merge,load,capture,fromEvents,mistakes,build,mergeChallenge};root.EmilyPractice=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);
+

@@ -21,12 +21,13 @@
  // Emily's persistence library stores versioned data; use its own storage key.
  function snapshot(){
    if(child==='emily'){
-     return {...emilyExtras,...(window.PonyProgress?{pony:localStorage.getItem(window.PonyProgress.KEY)||emilyExtras.pony||null}:{}),storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1'),rainbow:localStorage.getItem('emily-rainbow-v1'),...(window.EmilyPractice?{firstAttempts:localStorage.getItem(window.EmilyPractice.KEY)||emilyExtras.firstAttempts||null,nextChallenge:localStorage.getItem(window.EmilyPractice.CHALLENGE_KEY)||emilyExtras.nextChallenge||null}:{})};
+     return {...emilyExtras,...(window.GardenProgress?{garden:localStorage.getItem(window.GardenProgress.KEY)||emilyExtras.garden||null}:{}),...(window.PonyProgress?{pony:localStorage.getItem(window.PonyProgress.KEY)||emilyExtras.pony||null}:{}),storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1'),rainbow:localStorage.getItem('emily-rainbow-v1'),...(window.EmilyPractice?{firstAttempts:localStorage.getItem(window.EmilyPractice.KEY)||emilyExtras.firstAttempts||null,nextChallenge:localStorage.getItem(window.EmilyPractice.CHALLENGE_KEY)||emilyExtras.nextChallenge||null}:{})};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
    return {...jasonExtras,answers:localStorage.getItem('jason-reading-v1')||'{}',notes,...(localStorage.getItem(AdventureMaths.KEY)!==null?{maths:localStorage.getItem(AdventureMaths.KEY)}:{})};
  }
  function mergeEmilyPractice(data){
+   if(typeof data.garden==='string')window.GardenProgress?.restore(localStorage,data.garden);
    if(typeof data.pony==='string')window.PonyProgress?.restore(localStorage,data.pony);
    const model=window.EmilyPractice;if(!model)return;
    if(typeof data.firstAttempts==='string'){const merged=model.merge(model.load(localStorage),JSON.parse(data.firstAttempts));localStorage.setItem(model.KEY,JSON.stringify(merged))}
@@ -293,6 +294,7 @@
  }
 
 })();
+
 
 
 
