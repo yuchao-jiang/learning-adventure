@@ -9,7 +9,7 @@
 <section><h2>Parent observations</h2><p>Notes are saved privately with the question and, when selected, the practice attempt. Adding a note does not change the child's answers or scores. Earlier notes remain in the history.</p>
 <form id="note-form"><label>Question <select id="note-question" required></select></label><label style="display:block">Your observation <textarea id="note-text" maxlength="8000" rows="4" required style="display:block;width:95%"></textarea></label><button id="note-save" type="submit">Save private note</button></form><p id="note-status" role="status"></p><div id="parent-notes"></div></section>
 <section class="scroll"><table><thead><tr><th>Activity / question</th><th>Skill</th><th>First answer</th><th>Latest answer</th><th>Active time</th><th>Other observations</th></tr></thead><tbody id="rows"></tbody></table></section>
-<script src="maths-next-set.js"></script><script src="cloud-config.js"></script><script src="learning-history.js?v=parent-notes-1"></script><script>
+<script src="maths-next-set.js"></script><script src="cloud-config.js"></script><script src="report-catalog.js?v=1"></script><script src="learning-history.js?v=parent-notes-1"></script><script>
 'use strict';
 const $=id=>document.getElementById(id);let records=[],summary=[],noteChoices=[];
 
@@ -32,3 +32,4 @@ const cell=value=>'"'+String(value??'').replace(/^[=+@-]/,"'$&").replaceAll('"',
 $('csv').onclick=()=>{const rows=[['Learner','Activity','Attempt','Question','Skill','Prompt','First answer','Latest answer','Active milliseconds','Answer versions','Checks','Hints','Flags','Imported earlier work','Parent notes'],...summary.map(row=>[row.learner,row.activity,row.attemptId,row.questionId,row.question.skill,row.question.prompt,answer(row.legacy?null:row.question.writing?row.firstSubmitted:row.first,row),answer(row.latest,row),row.activeMs,row.revisions,row.checks,row.hints,row.flags,row.legacy,row.notes.map(event=>event.data.text).join(" | ")])];download(rows.map(row=>row.map(cell).join(',')).join('\r\n'),'text/csv;charset=utf-8','csv')};
 questionChoices();
 </script></html>
+
