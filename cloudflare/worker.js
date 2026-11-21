@@ -163,6 +163,11 @@ const ARCHIVE_REPO = 'yuchao-jiang/learning-records';
 async function initArchive(env) {
  const db=env.PROGRESS_DB;if(archiveReady.has(db))return;
  const statements=[
+ // Older installations contain only progress, auth_attempts and device_sessions.
+ // Create the append-only history schema before any trigger references it.
+ // IF NOT EXISTS preserves all existing progress and history during upgrades.
+ `CREATE TABLE IF NOT EXISTS learning_events (seq INTEGER PRIMARY KEY AUTOINCREMENT,event_id TEXT NOT NULL UNIQUE,learner TEXT NOT NULL CHECK (learner IN ('emily','jason')),occurred_at TEXT NOT NULL,document TEXT NOT NULL CHECK (json_valid(document)))`,
+ `CREATE INDEX IF NOT EXISTS learning_events_learner_seq ON learning_events (learner, seq)`,
  `CREATE TABLE IF NOT EXISTS github_archive_queue (seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, learner TEXT NOT NULL, record_id TEXT NOT NULL, document TEXT NOT NULL, UNIQUE(kind,record_id))`,
  `CREATE TABLE IF NOT EXISTS github_archive_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
  `CREATE TRIGGER IF NOT EXISTS github_archive_progress_insert AFTER INSERT ON progress BEGIN INSERT OR IGNORE INTO github_archive_queue(kind,learner,record_id,document) VALUES('progress',NEW.child,NEW.revision,NEW.document); END`,
