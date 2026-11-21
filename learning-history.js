@@ -11,7 +11,7 @@
     storage.setItem(prefix+event.id,JSON.stringify(event));if(learner==='emily'&&type==='answer')root.EmilyPractice?.capture(storage,event,!storage.getItem('adventure-history-baseline-v1:'+learner+':'+activity+':'+event.attemptId+':'+questionId));if(type==='answer'||type==='check')storage.setItem('adventure-history-baseline-v1:'+learner+':'+activity+':'+event.attemptId+':'+questionId,'1');notify({ok:true,event});return event;
    }catch(error){notify({ok:false,error:'Learning history could not be saved on this device.'});return null}
   }
-  function register(activity,questionId,question){registry.set(activity+':'+questionId,json(question))}
+  function register(activity,questionId,question){const fallback=root.AdventureReportCatalog?.[activity]?.[questionId],same=!question.prompt||String(question.prompt).replace(/\s+/g,' ').trim()===String(fallback?.prompt||'').replace(/\s+/g,' ').trim();const full=fallback&&same?{...fallback,...question}:question;if(fallback&&same)for(const key of ['context','image','optionImages','claims'])if(!question[key]?.length&&fallback[key]?.length)full[key]=fallback[key];registry.set(activity+':'+questionId,json(full))}
   function answer(activity,questionId,value,extra={},attemptId){const question=registry.get(activity+':'+questionId)||{};return record(activity,questionId,'answer',{answer:value,correct:Number.isInteger(question.correctIndex)?value===question.correctIndex:null,...extra},attemptId)}
   function baseline(activity,questionId,data,attemptId){
    try{const id=attemptId||attempt(activity),key='adventure-history-baseline-v1:'+learner+':'+activity+':'+id+':'+questionId;if(storage.getItem(key))return;const event=record(activity,questionId,'import',{...data,initialAnswerKnown:false,timingAvailable:false},id);if(event)storage.setItem(key,'1')}catch{notify({ok:false,error:'Existing learning history could not be saved.'})}
@@ -92,4 +92,5 @@
  root.addEventListener('pagehide',()=>{flushWriting();flushTime();sync()});root.addEventListener('online',()=>sync());
  setInterval(()=>{flushTime();viewport()},10000);setInterval(()=>sync(),30000);
 })(globalThis);
+
 
