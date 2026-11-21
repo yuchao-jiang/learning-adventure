@@ -197,10 +197,11 @@ family passphrase. No progress import or new secret is needed.
 3. Merge/deploy the website PR. Open each learner's existing browser and unlock
    private cloud access if needed. New events upload automatically; events queued
    before the Worker upgrade retry without being deleted.
-4. Open `learning-review.html` from the parent controls to load history. Both
-   GET and POST `/learning-history?child=emily|jason` require the same private
-   authentication as progress. JSON contains the complete event stream; CSV
-   provides a question summary for later analysis. Keep downloaded files private.
+4. Review learning records in the private Notion Learning Sessions database after
+   configuring the Worker connection described in [NOTION_SYNC.md](NOTION_SYNC.md).
+   The website uploads history automatically; no separate parent review page is
+   needed. GET and POST `/learning-history?child=emily|jason` remain authenticated
+   backend endpoints used by learning-history synchronization.
 
 Emily's worksheet choices, writing drafts and checks, shop, cupcake, parcel and
 Rainbow choices/hints are recorded. Writing drafts save on the first input and
@@ -222,16 +223,12 @@ Rainbow Rescue is now included in Emily's normal private progress snapshot too.
 
 ## Parent observations
 
-Deploy the updated Worker to accept `parent-note` events (no new schema is
-needed beyond `learning_events`). In `learning-review.html`, unlock private
-access, choose a learner and question, enter an observation, and select
-**Save private note**. Choosing a saved question associates the observation with
-that attempt. Part 1 general-observation choices associate notes with the
-question without guessing which attempt the parent saw.
+Parent observations are maintained in Notion, either directly or through this
+chat. Keep them beside the matching activity's questions and results, and retain
+which help the child needed. The Worker preserves parent-edited Notion fields
+and page content while updating its generated results.
 
-Notes retain the parent's wording and attribution; they do not modify answers,
-scores, or timing. Additional notes append without replacing older observations.
-Notes are visible in the private review and included in JSON and CSV downloads.
-The form distinguishes database confirmation from a locally queued note.
+Existing `parent-note` history events remain in private D1 storage. Removing the
+review page does not delete notes, answers, progress, or the authenticated history
+API. No Worker redeployment is needed just to remove this page and its links.
 Do not put real observations in source code, tests, issues or PR descriptions.
-Any private SQL import belongs in `.private-backup/` and must stay out of GitHub.
