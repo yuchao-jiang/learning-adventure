@@ -5,6 +5,7 @@
  const url=configuredUrl.startsWith('https://')?configuredUrl:'';
  const child=document.body.dataset.learner;
  const mathsPage=document.body.dataset.activity==='maths';
+ const readingPage=document.body.dataset.activity==='english';
  const jasonHost=document.getElementById(mathsPage?'maths-cloud':'jason-roadmap');
  if(!['emily','jason'].includes(child))return;
  let parentSettings=null;
@@ -13,7 +14,7 @@
  if(child==='jason'){const indicator=document.createElement('p');indicator.id='cloud-sync-status';indicator.className='muted';indicator.setAttribute('role','status');indicator.textContent=mathsPage?'Loading your work…':'☁️ Checking saved progress…';(parentSettings||jasonHost)?.append(indicator)}
  let sha=null,cloudExists=false,jasonExtras={},emilyExtras={};
  const sessionKey='adventure-cloud-session-v1',deviceKey='adventure-cloud-device-v1';
- let pending=null,unlockPromise=null,remoteMaths=null,autoQueued=false,autoPromise=null,reloadNeeded=false,autoUrgent=false;
+ let pending=null,unlockPromise=null,remoteMaths=null,remoteReading=null,autoQueued=false,autoPromise=null,reloadNeeded=false,autoUrgent=false;
  // Discard credentials from the earlier passphrase-based client.
  try{sessionStorage.removeItem('adventure-family-passphrase-session-v2');sessionStorage.removeItem('adventure-family-pin-session')}catch{}
  const say=t=>{const indicator=document.getElementById('cloud-sync-status');if(indicator){indicator.title=t;let label=t,state='ready';if(mathsPage){if(/locked|unlock/i.test(t)){label='Saved here · Cloud locked';state='locked'}else if(/failed|retry|Could not|not configured|unavailable/i.test(t)){label='Saved here · Waiting to sync';state='pending'}else if(/Syncing|Saving/i.test(t)){label='Saving…';state='saving'}else if(/synced|saved to your private/i.test(t)){label='Saved ✓';state='synced'}else label='Saved on this device.'}indicator.textContent=label;indicator.setAttribute('data-sync-state',state)}const emily=document.getElementById('emily-cloud-status');if(emily)emily.textContent=t};
@@ -126,6 +127,8 @@
    })().finally(()=>{unlockPromise=null});
    return unlockPromise;
  }
+ function readingFingerprint(data){const stable=value=>JSON.stringify(value,(_,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.keys(item).sort().map(k=>[k,item[k]])):item);return stable({answers:JSON.parse(data.answers||'{}'),notes:data.notes||{}})}
+ function mergeReadingEntry(local,remote,locked){const entries=[local,remote].filter(v=>v&&typeof v==='object');const chosen=locked||(!local?remote:!remote?local:(local.updatedAt||0)>(remote.updatedAt||0)?local:remote);if(!chosen)return chosen;if(!entries.some(v=>'initialAnswerKnown' in v))return chosen;const out={...chosen};const unknown=entries.some(v=>v.initialAnswerKnown===false||('answer' in v&&v.initialAnswerKnown===undefined));if(unknown){out.initialAnswerKnown=false;delete out.firstAnswer;delete out.firstAnsweredAt}else{out.initialAnswerKnown=true;const first=entries.filter(v=>v.firstAnswer&&v.firstAnsweredAt).sort((a,b)=>a.firstAnsweredAt.localeCompare(b.firstAnsweredAt))[0];if(first){out.firstAnswer=first.firstAnswer;out.firstAnsweredAt=first.firstAnsweredAt}}return out}
  function mergeJason(cloudData){
    if(!cloudData||(cloudData.answers!=null&&typeof cloudData.answers!=='string'))throw Error('Invalid cloud answers');
    let remote={},local={};
@@ -143,10 +146,11 @@
    }
    const history={};for(const set of [1,2]){
      const events=[...(remote._history?.[set]||[]),...(local._history?.[set]||[])];
-     const unique=new Map();for(const e of events)unique.set((e.type||'')+'|'+(e.at||''),e);
+     const unique=new Map();for(const e of events)unique.set(e.id||((e.type||'')+'|'+(e.at||'')),e);
      history[set]=[...unique.values()].sort((a,b)=>String(a.at).localeCompare(String(b.at)));
    }
    merged._history=history;
+   for(const id of new Set([...Object.keys(local),...Object.keys(remote)])){const match=id.match(/^([12])-\d+$/);if(!match)continue;const set=match[1],locked=remote._submitted?.[set]?remote[id]:local._submitted?.[set]?local[id]:null;merged[id]=mergeReadingEntry(local[id],remote[id],locked)}
    const raw=JSON.stringify(merged);
    let changed=JSON.stringify(local)!==raw;
    localStorage.setItem('jason-reading-v1',raw);
@@ -189,6 +193,7 @@
      if(!session){say('Cloud progress is locked. Ask a parent to unlock it. Local work is available.');return false}
      window.AdventureHistory?.sync();
      const result=await request('GET',session);sha=result.sha||null;cloudExists=!!result.exists;
+     if(child==='jason')remoteReading=readingFingerprint(result.exists?result.data.data:{});
      if(child==='jason')remoteMaths=result.exists&&typeof result.data?.data?.maths==='string'?AdventureMaths.stable(AdventureMaths.normalize(JSON.parse(result.data.data.maths))):null;
      if(!result.exists){say('No cloud save yet.');return true}
      if(child==='jason'){
@@ -275,7 +280,7 @@
      if(!await load(false,true))return false;
      const raw=localStorage.getItem(AdventureMaths.KEY);
      const local=raw===null?null:AdventureMaths.stable(AdventureMaths.normalize(JSON.parse(raw)));
-     if(local!==null&&local!==remoteMaths){say('Saved on this device. Syncing…');succeeded=await save(false)}
+     if((local!==null&&local!==remoteMaths)||(readingPage&&readingFingerprint(snapshot())!==remoteReading)){say('Saved on this device. Syncing…');succeeded=await save(false)}
      else{succeeded=true;say('✓ All progress synced automatically.')}
      return succeeded;
    }catch(e){window.adventureSyncError=e.message;say('Saved on this device. Sync will retry: '+e.message);return false}
@@ -283,17 +288,20 @@
  }
  initialLoad=child==='jason'?Promise.resolve():load();
  if(child==='jason'){
-   window.addEventListener('adventure-maths-changed',event=>{
+   const queueAutoSync=event=>{
      autoQueued=true;autoUrgent=autoUrgent||!!event?.urgent;say(storedSession()?'Saved on this device. Syncing…':'Saved on this device. Cloud is locked.');
      clearTimeout(pending);if(event?.urgent)autoSync();else pending=setTimeout(autoSync,1200);
-   });
+   };
+   window.addEventListener('adventure-maths-changed',queueAutoSync);
+   window.addEventListener('adventure-reading-changed',queueAutoSync);
    for(const event of ['focus','online','pageshow'])window.addEventListener(event,autoSync);
-   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'||mathsPage){if(mathsPage&&document.visibilityState==='hidden'){autoQueued=true;autoUrgent=true}autoSync()}});
+   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'||mathsPage||readingPage){if((mathsPage||readingPage)&&document.visibilityState==='hidden'){autoQueued=true;autoUrgent=true}autoSync()}});
    setInterval(()=>{if(document.visibilityState!=='hidden')autoSync()},30000);
    autoSync();
  }
 
 })();
+
 
 
 
