@@ -265,7 +265,6 @@
  const lock=document.createElement('button');lock.type='button';lock.textContent='Lock cloud';lock.addEventListener('click',window.adventureCloudLock);
  const forgetAll=document.createElement('button');forgetAll.type='button';forgetAll.textContent='Forget all trusted devices';forgetAll.addEventListener('click',window.adventureCloudForgetAll);
  controls.append(unlock,lock,forgetAll);
- const review=document.createElement('a');review.href='./learning-review.html';review.textContent='Private learning review';controls.append(review);
  if(!mathsPage)(child==='emily'?document.getElementById('hub'):(parentSettings||jasonHost))?.append(controls);
  function autoSync(){
    if(autoPromise)return autoPromise
