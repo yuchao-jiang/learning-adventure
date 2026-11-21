@@ -1,5 +1,7 @@
 # Archive every learner record to private GitHub
 
+For automatic Notion learning records, start with [NOTION_SYNC.md](NOTION_SYNC.md). Notion sync works directly from D1 and does not require a GitHub token. This GitHub archive can be activated independently when wanted.
+
 Destination: `yuchao-jiang/learning-records`, branch `main`. This Worker update keeps D1 as the operational store and automatically queues every successful progress revision and every learning-history event. SQLite triggers put records in the outbox in the same transaction as their save. Old progress and existing event history are queued on first upgrade. Already missing or never-recorded history cannot be reconstructed.
 
 ## One-time activation
@@ -29,4 +31,4 @@ Notes supplied to this chat are written to the private repository using the conn
 
 ## Validation
 
-28 Worker tests pass: existing auth, stale-write protection and event immutability, plus atomic archive queueing, both learners, initial backfill, first-wrong/later-right reports, upload failures, private-destination enforcement, authentication and branch-conflict retry. All archive traffic in tests uses a mock GitHub API and synthetic records. No real D1 records or server credentials were accessed during development.
+36 combined Worker tests pass: existing auth, stale-write protection and event immutability, plus atomic archive queueing, both learners, initial backfill, first-wrong/later-right reports, upload failures, private-destination enforcement, authentication and branch-conflict retry. All archive traffic in tests uses a mock GitHub API and synthetic records. No real D1 records or server credentials were accessed during development.
