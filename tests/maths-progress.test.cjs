@@ -62,12 +62,30 @@ test('parent-preview classification survives stale cloud merges and can be rever
 });
 
 test('two practice parts cover every new question once and recognize saved attempts',()=>{
- const {parts,partForIds,nextPart}=require('../maths-progress.js');
+ const {legacyParts:parts,partForIds,nextPart}=require('../maths-progress.js');
  assert.deepEqual(parts.map(part=>part.ids.length),[4,5]);
  assert.deepEqual(parts.flatMap(part=>part.ids),[12,13,14,15,16,17,18,19,20]);
  assert.equal(partForIds(parts[1].ids).id,'part-2');
  const first={session:attempt({ids:parts[0].ids,phase:'done'})};
- assert.equal(nextPart(first),'part-2');
+ assert.equal(nextPart(first),'maths-1-week-1');
  first.attemptTags={a:{preview:true,updatedAt:1}};
- assert.equal(nextPart(first),'part-1');
+ assert.equal(nextPart(first),'maths-1-week-1');
+});
+
+
+
+test('four weeks cover all 35 new questions exactly once and use five-minute checking',()=>{
+ const {parts}=require('../maths-progress.js');
+ assert.deepEqual(parts.map(p=>p.ids.length),[9,9,8,9]);
+ assert.deepEqual(parts.flatMap(p=>p.ids),Array.from({length:35},(_,i)=>21+i));
+ assert(parts.every(p=>p.minutes===20&&p.checkMinutes===5));
+});
+test('new and historical question answers merge without loss in either direction',()=>{
+ const old={session:attempt({phase:'done',answers:{0:2},first:{0:0}})};
+ const fresh={session:attempt({id:'new',startedAt:200,ids:[47,48,49,50,51,52,53,54,55],answers:{55:2}})};
+ for(const result of [merge(old,fresh),merge(fresh,old)]){
+ assert.equal(result.session.answers[55],2);
+ assert.equal(result.archivedSessions[0].answers[0],2);
+ }
+ assert.throws(()=>normalize({session:attempt({ids:[56]})}));
 });
