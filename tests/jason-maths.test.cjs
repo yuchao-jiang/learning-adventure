@@ -159,13 +159,15 @@ test('previous parent exclusions remain hidden without deleting saved records',(
  assert.equal(app.elements.get('practice').hidden,true);
  assert.equal(app.storage.getItem('jason-maths-two-weeks-v1'),JSON.stringify(saved));
 });
-test('active practice hides the mission chooser and completed work offers child answer review',()=>{
+test('finishing opens the selected saved attempt in My work',()=>{
  const app=setup();app.run('startSession()');
  assert.equal(app.elements.get('mission-choice').hidden,true);
  assert.equal(app.elements.get('answers-box').hidden,true);
  app.run('nextPhase();nextPhase()');
  assert.equal(app.elements.get('mission-choice').hidden,false);
- assert.equal(app.elements.get('answers-box').hidden,false);
+ assert.equal(app.elements.get('answers-box').hidden,true);
+ assert.equal(app.elements.get('history-page').hidden,false);
+ assert.equal(app.elements.get('practice').hidden,true);
  assert.ok(app.elements.get('answers-review').children.length>0);
 });
 
@@ -229,4 +231,18 @@ test('week 4 restores from cloud without dropping earlier maths records',()=>{
  const restored=setup({'jason-maths-two-weeks-v1':JSON.stringify(saved)},false);
  assert.equal(restored.run('store.session.answers[55]'),2);
  assert.equal(restored.run('data[55].paperQuestion'),35);
+});
+
+
+
+test('Play has no earlier-practice launcher and old attempts stay in My work',()=>{
+ assert.doesNotMatch(html,/<summary>Earlier practice|id="part-1"|id="part-2"/);
+ const deadline=Date.now(),old={id:'earlier',week:1,ids:[12,13,14,15],phase:'done',startedAt:deadline,updatedAt:deadline,answers:{12:2},first:{12:0},flagged:{},deadline};
+ const app=setup({'jason-maths-two-weeks-v1':JSON.stringify({session:old})},false);
+ assert.equal(app.elements.get('practice').hidden,true);
+ assert.equal(app.elements.get('answers-box').hidden,true);
+ app.run('showMathsView("history");reviewKey="earlier";renderHistory()');
+ assert.equal(app.run('store.session.answers[12]'),2);
+ assert.equal(app.elements.get('attempt-list').children.length,1);
+ assert.equal(app.elements.get('history-page').hidden,false);
 });
