@@ -7,7 +7,7 @@
       "emoji": "🧺",
       "gem": "#b8cb8d",
       "skill": "Read & practise",
-      "story": "Zoe, Taylor and Gabby plan a picnic. Mia and Ben come to help. Zoe puts cups and snacks on a mat.",
+      "story": "Zoe, Taylor and Gabby plan a picnic under the big tree. Mia brings a soft mat, and Ben carries the cups. “Can we help?” they ask. Zoe smiles and opens the basket. There are snacks to share and lots of little jobs to do. Everyone finds a way to help.",
       "questions": [
         {
           "id": "picnic-sharing-1",
@@ -48,7 +48,7 @@
       "emoji": "🚩",
       "gem": "#e7ba8b",
       "skill": "Read & practise",
-      "story": "Taylor brings flags in a box. Zoe picks red. Taylor picks blue. There is room for both colours!",
+      "story": "Taylor brings the flags in a box. Zoe picks a red flag, and Taylor picks a blue one. “We can use both colours,” says Gabby. A little wind lifts the flags into the air. Ben holds the string while the others tie it to the tree. Their picnic spot looks bright and happy.",
       "questions": [
         {
           "id": "picnic-contrast-1",
@@ -89,7 +89,7 @@
       "emoji": "🎀",
       "gem": "#b2c6de",
       "skill": "Read & practise",
-      "story": "Gabby puts ribbon round the bags. She has lots of stickers too. The friends help her sort them.",
+      "story": "Gabby finds a roll of ribbon and some stickers. She wants to make little gift bags for her friends. Mia holds a bag while Gabby wraps ribbon around it. Some stickers are still in packs, and some are loose. “Let’s sort them before we start,” says Zoe. The friends make space on the mat.",
       "questions": [
         {
           "id": "picnic-quarter-1",
@@ -132,7 +132,7 @@
       "emoji": "🌼",
       "gem": "#e5acb7",
       "skill": "Read & practise",
-      "story": "Mia brings flowers for the table. Ben finds three vases. They want each vase to look full.",
+      "story": "Mia brings flowers for the picnic table. Some are yellow, and some are white. Ben finds three small vases and puts them in a row. “Let’s share the flowers,” says Mia. Gabby carries a vase to the table with both hands. Soon there will be a bright little bunch beside each plate.",
       "questions": [
         {
           "id": "picnic-sharing-2",
@@ -173,7 +173,7 @@
       "emoji": "🌈",
       "gem": "#d5c48c",
       "skill": "Read & practise",
-      "story": "A drop of rain lands on Zoe's nose. The friends take the picnic inside. Ben and Mia bring picture cards to play with.",
+      "story": "A drop of rain lands on Zoe’s nose. Then another drop falls on the mat. “Let’s take our picnic inside,” says Taylor. The friends carry the food and cups to the house. Now they can stay dry. Ben and Mia find some animal picture cards, and everyone sits down to play.",
       "questions": [
         {
           "id": "picnic-result",
@@ -214,7 +214,7 @@
       "emoji": "🍰",
       "gem": "#bfcc9a",
       "skill": "Read & practise",
-      "story": "The rain stops. The friends sit down for cake. What a good day to share!",
+      "story": "The rain stops, and the sun shines through the window. The friends can see their flags moving in the tree. “Our picnic still feels special,” says Zoe. Gabby brings the cake to the table, and Mia finds the plates. Everyone has helped in a different way. Now it is time to share.",
       "questions": [
         {
           "id": "picnic-quarter-2",
