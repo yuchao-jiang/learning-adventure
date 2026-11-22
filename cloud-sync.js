@@ -25,7 +25,8 @@
      return {...emilyExtras,...(window.PicnicProgress?{picnic:localStorage.getItem(window.PicnicProgress.KEY)||emilyExtras.picnic||null}:{}),...(window.GardenProgress?{garden:localStorage.getItem(window.GardenProgress.KEY)||emilyExtras.garden||null}:{}),...(window.PonyProgress?{pony:localStorage.getItem(window.PonyProgress.KEY)||emilyExtras.pony||null}:{}),storageKey:'emily-adventure-v2',raw:localStorage.getItem('emily-adventure-v2'),shop:localStorage.getItem('emily-shop-v4'),cupcake:localStorage.getItem('emily-cupcake-trial-v1'),parcel:localStorage.getItem('emily-parcel-v1'),rainbow:localStorage.getItem('emily-rainbow-v1'),...(window.EmilyPractice?{firstAttempts:localStorage.getItem(window.EmilyPractice.KEY)||emilyExtras.firstAttempts||null,nextChallenge:localStorage.getItem(window.EmilyPractice.CHALLENGE_KEY)||emilyExtras.nextChallenge||null}:{})};
    }
    const notes={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('jason-reading-notes-v1-'))notes[k]=localStorage.getItem(k)}
-   return {...jasonExtras,answers:localStorage.getItem('jason-reading-v1')||'{}',notes,...(localStorage.getItem(AdventureMaths.KEY)!==null?{maths:localStorage.getItem(AdventureMaths.KEY)}:{})};
+   const extra={};for(const [field,model] of [['thinking',window.ThinkingProgress],['readingPaper1',window.ReadingProgress],['weeklyReview',window.WeeklyReviewProgress]])if(model&&localStorage.getItem(model.KEY)!==null)extra[field]=localStorage.getItem(model.KEY);
+   return {...jasonExtras,...extra,answers:localStorage.getItem('jason-reading-v1')||'{}',notes,...(localStorage.getItem(AdventureMaths.KEY)!==null?{maths:localStorage.getItem(AdventureMaths.KEY)}:{})};
  }
  function mergeEmilyPractice(data){
    if(typeof data.picnic==='string')window.PicnicProgress?.restore(localStorage,data.picnic);
@@ -128,7 +129,7 @@
    })().finally(()=>{unlockPromise=null});
    return unlockPromise;
  }
- function readingFingerprint(data){const stable=value=>JSON.stringify(value,(_,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.keys(item).sort().map(k=>[k,item[k]])):item);return stable({answers:JSON.parse(data.answers||'{}'),notes:data.notes||{}})}
+ function readingFingerprint(data){const stable=value=>JSON.stringify(value,(_,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.keys(item).sort().map(k=>[k,item[k]])):item);return stable({answers:JSON.parse(data.answers||'{}'),notes:data.notes||{},thinking:data.thinking||null,readingPaper1:data.readingPaper1||null,weeklyReview:data.weeklyReview||null})}
  function mergeReadingEntry(local,remote,locked){const entries=[local,remote].filter(v=>v&&typeof v==='object');const chosen=locked||(!local?remote:!remote?local:(local.updatedAt||0)>(remote.updatedAt||0)?local:remote);if(!chosen)return chosen;if(!entries.some(v=>'initialAnswerKnown' in v))return chosen;const out={...chosen};const unknown=entries.some(v=>v.initialAnswerKnown===false||('answer' in v&&v.initialAnswerKnown===undefined));if(unknown){out.initialAnswerKnown=false;delete out.firstAnswer;delete out.firstAnsweredAt}else{out.initialAnswerKnown=true;const first=entries.filter(v=>v.firstAnswer&&v.firstAnsweredAt).sort((a,b)=>a.firstAnsweredAt.localeCompare(b.firstAnsweredAt))[0];if(first){out.firstAnswer=first.firstAnswer;out.firstAnsweredAt=first.firstAnsweredAt}}return out}
  function mergeJason(cloudData){
    if(!cloudData||(cloudData.answers!=null&&typeof cloudData.answers!=='string'))throw Error('Invalid cloud answers');
@@ -167,6 +168,12 @@
        localStorage.setItem(AdventureMaths.KEY,rawMaths);changed=true;
        if(typeof window.adventureMathsRestore==='function')window.adventureMathsRestore();
      }
+   }
+   for(const [field,model,event] of [['thinking',window.ThinkingProgress,'thinking-restored'],['readingPaper1',window.ReadingProgress,'reading-restored'],['weeklyReview',window.WeeklyReviewProgress,'weekly-review-restored']]){
+     if(!model||cloudData[field]==null)continue;
+     if(typeof cloudData[field]!=='string')throw Error('Invalid cloud practice progress');
+     const before=localStorage.getItem(model.KEY),raw=JSON.stringify(model.merge(JSON.parse(before||'{}'),JSON.parse(cloudData[field])));
+     if(before!==raw){localStorage.setItem(model.KEY,raw);changed=true;window.dispatchEvent(new Event(event))}
    }
    return changed;
  }
