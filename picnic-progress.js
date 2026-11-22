@@ -1,0 +1,1 @@
+(function(root){const base=root.GardenProgress||(typeof require==='function'?require('./garden-progress.js'):null);const api=base.create('emily-picnic-v1','picnic-progress-restored');root.PicnicProgress=api;if(typeof module!=='undefined')module.exports=api;})(globalThis);
