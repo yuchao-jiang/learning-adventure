@@ -23,7 +23,7 @@ async function setup(child, local, remote, options = {}) {
       showModal() { this.returnValue = options.cancel ? 'cancel' : 'unlock'; listeners.close(); }
     };created.push(item);return item;
   };
-  const window = {dispatchEvent(){},...(options.picnic?{PicnicProgress:require('../picnic-progress.js')}:{}),...(options.garden?{GardenProgress:require('../garden-progress.js')}:{}),...(options.pony?{PonyProgress:require('../pony-progress.js')}:{}),...(options.firstPractice?{EmilyPractice:require('../emily-practice.js')}:{}), ADVENTURE_SYNC_URL: options.url || 'https://sync.test', addEventListener(name,callback) { events[name]=callback; } };
+  const window = {...(options.weekly?{ThinkingProgress:require('../thinking-progress.js'),ReadingProgress:require('../reading-progress.js'),WeeklyReviewProgress:require('../weekly-review-progress.js')} : {}),dispatchEvent(){},...(options.picnic?{PicnicProgress:require('../picnic-progress.js')}:{}),...(options.garden?{GardenProgress:require('../garden-progress.js')}:{}),...(options.pony?{PonyProgress:require('../pony-progress.js')}:{}),...(options.firstPractice?{EmilyPractice:require('../emily-practice.js')}:{}), ADVENTURE_SYNC_URL: options.url || 'https://sync.test', addEventListener(name,callback) { events[name]=callback; } };
   const context = {Event, AdventureMaths: require('../maths-progress.js'), window, localStorage, sessionStorage, document: { body: { dataset: { learner: child, activity: options.englishPage?'english':options.mathsPage?'maths':'' }, append() {} },
     createElement: element, getElementById: id=>created.find(item=>item.id===id)||element(),addEventListener(name,callback){events[name]=callback},visibilityState:'visible' }, location: { reload() { reloads++;reloadPositions.push(writes.length); } },
     setTimeout:(fn)=>{scheduled.push(fn);return scheduled.length},clearTimeout(){},setInterval(){}, fetch: async (url, fetchOptions) => {
@@ -237,4 +237,13 @@ test('Picnic sync restores on a second device and retains Garden Club and the fi
  const app=await setup('emily',{[P.KEY]:JSON.stringify(local)},data,{picnic:true});await app.window.adventureCloudSave();
  const merged=JSON.parse(app.writes.at(-1).data.picnic);assert.equal(merged.first['picnic-sharing-1'].correct,false);assert.equal(merged.answers['picnic-sharing-1'],1);assert.equal(app.writes.at(-1).data.garden,'keep-garden');
  const other=await setup('emily',{},app.writes.at(-1).data,{picnic:true});assert.equal(JSON.parse(other.localStorage.getItem(P.KEY)).answers['picnic-sharing-1'],1);
+});
+
+test('weekly dashboard restores all practice models and preserves other subjects on save',async()=>{
+ const T=require('../thinking-progress.js'),R=require('../reading-progress.js'),W=require('../weekly-review-progress.js');
+ const state=(id,set)=>({version:1,attempts:{[id]:{id,setId:set,ids:['Q1'],phase:'solve',answers:{Q1:{value:1,initial:0,at:2,initialAt:1}},flags:{},time:{Q1:5000},startedAt:1,updatedAt:2}}});
+ const remote={answers:'{}',notes:{},thinking:JSON.stringify(state('t','oc1')),readingPaper1:JSON.stringify(state('r','english-1-week-1')),weeklyReview:JSON.stringify(state('w','review-maths')),piano:'unrelated retained'};
+ const app=await setup('jason',{},remote,{weekly:true});
+ for(const [model,id] of [[T,'t'],[R,'r'],[W,'w']])assert.equal(JSON.parse(app.localStorage.getItem(model.KEY)).attempts[id].answers.Q1.initial,0);
+ await app.window.adventureCloudSave();const saved=app.writes.at(-1).data;assert.equal(saved.piano,'unrelated retained');assert.equal(JSON.parse(saved.weeklyReview).attempts.w.time.Q1,5000);assert(saved.thinking);assert(saved.readingPaper1);
 });

@@ -1,0 +1,1 @@
+(function(root){const base=root.ThinkingProgress||(typeof require==='function'?require('./thinking-progress.js'):null);const api=base.create({KEY:'jason-weekly-review-v1'});api.advance=()=>{};root.WeeklyReviewProgress=api;if(typeof module!=='undefined')module.exports=api;})(globalThis);
