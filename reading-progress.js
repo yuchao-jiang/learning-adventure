@@ -1,0 +1,1 @@
+(function(root){const base=root.ThinkingProgress||(typeof require==='function'?require('./thinking-progress.js'):null);const model=base.create({KEY:'jason-reading-paper-1-v1',SOLVE:20*60000,CHECK:5*60000});root.ReadingProgress=model;if(typeof module!=='undefined')module.exports=model;})(globalThis);
