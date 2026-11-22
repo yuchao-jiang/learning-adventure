@@ -4,7 +4,7 @@
  const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
  const stable=v=>JSON.stringify(v,(_,value)=>object(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,value[key]])):value);
  function session(value){
-  if(!object(value)||![1,2].includes(value.week)||!Array.isArray(value.ids)||!value.ids.length||value.ids.length>12||new Set(value.ids).size!==value.ids.length||!value.ids.every(id=>Number.isInteger(id)&&id>=0&&id<21)||!['solve','check','done'].includes(value.phase)||!Number.isFinite(value.deadline))throw Error('Invalid maths session');
+  if(!object(value)||![1,2].includes(value.week)||!Array.isArray(value.ids)||!value.ids.length||value.ids.length>12||new Set(value.ids).size!==value.ids.length||!value.ids.every(id=>Number.isInteger(id)&&id>=0&&id<56)||!['solve','check','done'].includes(value.phase)||!Number.isFinite(value.deadline))throw Error('Invalid maths session');
   const cleanAnswers=answers=>Object.fromEntries(value.ids.filter(id=>Number.isInteger(answers?.[id])&&answers[id]>=0&&answers[id]<5).map(id=>[id,answers[id]]));
   const startedAt=Number.isFinite(value.startedAt)?value.startedAt:Math.max(0,value.deadline-(value.phase==='solve'?(value.week===1?15:18):3)*60000);
   return {id:typeof value.id==='string'?value.id:'legacy-'+value.week+'-'+value.deadline+'-'+value.ids.join('-'),startedAt,updatedAt:Number.isFinite(value.updatedAt)?value.updatedAt:startedAt,week:value.week,ids:value.ids,phase:value.phase,answers:cleanAnswers(value.answers),first:value.first===null?null:cleanAnswers(value.first),flagged:Object.fromEntries(value.ids.filter(id=>value.flagged?.[id]===true).map(id=>[id,true])),deadline:value.deadline};
@@ -58,14 +58,17 @@
   }
   return [...byQuestion].filter(([,occurrences])=>occurrences.some(o=>o.firstWrong||o.wrong)).map(([id,occurrences])=>({id,occurrences,latest:occurrences.at(-1),needsPractice:occurrences.at(-1).wrong}));
  }
- const parts=[{id:'part-1',label:'Part 1',ids:[12,13,14,15],minutes:12},{id:'part-2',label:'Part 2',ids:[16,17,18,19,20],minutes:12}];
- const partForIds=ids=>parts.find(part=>Array.isArray(ids)&&stable(part.ids)===stable(ids));
+ const legacyParts=[{id:'part-1',label:'Part 1',ids:[12,13,14,15],minutes:12},{id:'part-2',label:'Part 2',ids:[16,17,18,19,20],minutes:12}];
+ const parts=[{id:'maths-1-week-1',label:'Week 1',paper:'Maths 1',ids:Array.from({length:9},(_,i)=>21+i),minutes:20,checkMinutes:5},{id:'maths-1-week-2',label:'Week 2',paper:'Maths 1',ids:Array.from({length:9},(_,i)=>30+i),minutes:20,checkMinutes:5},{id:'maths-1-week-3',label:'Week 3',paper:'Maths 1',ids:Array.from({length:8},(_,i)=>39+i),minutes:20,checkMinutes:5},{id:'maths-1-week-4',label:'Week 4',paper:'Maths 1',ids:Array.from({length:9},(_,i)=>47+i),minutes:20,checkMinutes:5}];
+ const allParts=[...parts,...legacyParts];
+ const partForIds=ids=>allParts.find(part=>Array.isArray(ids)&&stable(part.ids)===stable(ids));
  function nextPart(value){
   const completed=records(value).filter(record=>!record.preview&&record.attempt?.phase==='done');
   const done=part=>completed.some(record=>part.ids.every(id=>record.attempt.ids.includes(id)));
-  return done(parts[0])&&!done(parts[1])?parts[1].id:parts[0].id;
+  return (parts.find(part=>!done(part))||parts[0]).id;
  }
  const isPreview=(value,key)=>value.attemptTags?.[key]?.preview===true;
- const api={KEY,normalize,merge,stable,records,mistakes,isPreview,parts,partForIds,nextPart};
+ const api={KEY,normalize,merge,stable,records,mistakes,isPreview,parts,legacyParts,allParts,partForIds,nextPart};
  root.AdventureMaths=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);
+

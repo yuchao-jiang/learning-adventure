@@ -8,7 +8,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'jason-maths.html'), 'ut
 const source = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(source, 'maths application script exists');
 
-function setup(saved = {}) {
+function setup(saved = {}, legacy = true) {
   const elements = new Map();
   function el(id) {
     assert.ok(html.includes('id="' + id + '"'), 'Page element exists: ' + id);
@@ -30,20 +30,21 @@ function setup(saved = {}) {
       children:[],style:{},prepend(item){this.children.unshift(item)},setAttribute(k,v){this[k]=v},append(...items){this.children.push(...items)},appendChild(item){this.children.push(item)},replaceChildren(...items){this.children=items}
     }), createTextNode: v => v },
     localStorage: storage, confirm: () => true,
-    AdventureMaths: require('../maths-progress.js'),AdventureNextSet:require('../maths-next-set.js'),
+    AdventureMaths: require('../maths-progress.js'),AdventureNextSet:require('../maths-next-set.js'),AdventureMathsPaper1:require('../maths-paper-1.js'),
     crypto: require('node:crypto').webcrypto, Event, window: { dispatchEvent(event) {dispatched.push(event)} },
     setInterval: () => 1, clearInterval: () => {},
     Date, Math, JSON, Object, String, Number, Array
   };
   vm.createContext(context);
   vm.runInContext(source, context);
+  if(legacy)vm.runInContext("choosePart('part-1')",context);
   return { context, elements, storage, values, dispatched, run: code => vm.runInContext(code, context) };
 }
 
 test('missions have child-friendly labels and checking instructions', () => {
   assert.match(html, /Careful Thinker/);
   assert.doesNotMatch(html, /<option[^>]*>[^<]*Smart Explorer|Choose a maths mission/);
-  assert.match(html, /3 minutes/);
+  assert.match(source, /part.checkMinutes\|\|3/);
   assert.doesNotMatch(html, /Week 1 · Accuracy|Week 2 · Pacing/);
 });
 
@@ -185,12 +186,12 @@ test('Part 2 starts exactly the remaining five questions with 12 minutes',()=>{
  assert.deepEqual(saved.session.ids,[16,17,18,19,20]);
  assert.ok(saved.session.deadline-Date.now()>11*60000);
 });
-test('finishing Part 1 recommends Part 2 without starting it or losing Part 1',()=>{
+test('finishing earlier practice recommends the new paper without losing earlier work',()=>{
  const app=setup();app.run('startSession();store.session.answers[12]=2;nextPhase();nextPhase()');
- assert.equal(app.run('selectedPart'),'part-2');
+ assert.equal(app.run('selectedPart'),'maths-1-week-1');
  assert.equal(app.run('store.session.phase'),'done');
  app.run('startSession()');
- assert.equal(app.run('store.session.ids.length'),5);
+ assert.equal(app.run('store.session.ids.length'),9);
  assert.equal(app.run('store.archivedSessions[0].answers[12]'),2);
 });
 test('an existing nine-question practice keeps its questions and original deadline',()=>{
@@ -204,3 +205,28 @@ test('an existing nine-question practice keeps its questions and original deadli
 
 
 test('finished maths emits an urgent sync event with the completed attempt saved locally first',()=>{const app=setup();app.run('startSession();nextPhase();nextPhase()');assert.equal(app.dispatched.at(-1).urgent,true);assert.equal(JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1')).session.phase,'done')});
+
+
+
+test('Maths 1 is the default with nine questions and twenty minutes',()=>{
+ const app=setup({},false);app.run('startSession()');
+ const s=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1')).session;
+ assert.deepEqual(s.ids,[21,22,23,24,25,26,27,28,29]);
+ assert(s.deadline-Date.now()>19*60000);
+ assert.equal(app.run('attemptName(1,store.session.ids)'), 'Maths 1 · Week 1');
+ app.run('store.session.answers[21]=1;nextPhase()');
+ assert.equal(app.run('store.session.first[21]'),1);
+ assert(app.run('store.session.deadline')-Date.now()>4*60000);
+});
+test('completing Maths 1 advances to Week 2 and keeps the previous answers',()=>{
+ const app=setup({},false);app.run('startSession();store.session.answers[21]=1;nextPhase();nextPhase();startSession()');
+ assert.equal(app.run('store.session.ids[0]'),30);
+ assert.equal(app.run('store.archivedSessions[0].answers[21]'),1);
+});
+test('week 4 restores from cloud without dropping earlier maths records',()=>{
+ const app=setup({},false);app.run('choosePart("maths-1-week-4");startSession();store.session.answers[55]=2;persist()');
+ const saved=JSON.parse(app.storage.getItem('jason-maths-two-weeks-v1'));
+ const restored=setup({'jason-maths-two-weeks-v1':JSON.stringify(saved)},false);
+ assert.equal(restored.run('store.session.answers[55]'),2);
+ assert.equal(restored.run('data[55].paperQuestion'),35);
+});
