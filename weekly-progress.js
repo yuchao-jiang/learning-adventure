@@ -10,7 +10,7 @@ const reviewSets=[[
  {id:'review-thinking',title:'💡 Plan & prove'}
 ],null,null,null];
 function status(model,storage,setId){
- try{const rows=Object.values(model.load(storage).attempts).filter(a=>a.setId===setId);
+ try{const rows=Object.values(model.load(storage).attempts).filter(a=>a.setId===setId&&!a.parentTest);
  return rows.some(a=>a.phase==='done')?'completed':rows.length?'in-progress':'ready';
  }catch{return 'ready'}
 }
