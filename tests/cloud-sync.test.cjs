@@ -23,7 +23,7 @@ async function setup(child, local, remote, options = {}) {
       showModal() { this.returnValue = options.cancel ? 'cancel' : 'unlock'; listeners.close(); }
     };created.push(item);return item;
   };
-  const window = {...(options.weekly?{ThinkingProgress:require('../thinking-progress.js'),ReadingProgress:require('../reading-progress.js'),WeeklyReviewProgress:require('../weekly-review-progress.js')} : {}),dispatchEvent(){},...(options.picnic?{PicnicProgress:require('../picnic-progress.js')}:{}),...(options.garden?{GardenProgress:require('../garden-progress.js')}:{}),...(options.pony?{PonyProgress:require('../pony-progress.js')}:{}),...(options.firstPractice?{EmilyPractice:require('../emily-practice.js')}:{}), ADVENTURE_SYNC_URL: options.url || 'https://sync.test', addEventListener(name,callback) { events[name]=callback; } };
+  const window = {...(options.tripWishes?{TripWishes:require('../trip-wishes.js')}:{}),...(options.weekly?{ThinkingProgress:require('../thinking-progress.js'),ReadingProgress:require('../reading-progress.js'),WeeklyReviewProgress:require('../weekly-review-progress.js')} : {}),dispatchEvent(){},...(options.picnic?{PicnicProgress:require('../picnic-progress.js')}:{}),...(options.garden?{GardenProgress:require('../garden-progress.js')}:{}),...(options.pony?{PonyProgress:require('../pony-progress.js')}:{}),...(options.firstPractice?{EmilyPractice:require('../emily-practice.js')}:{}), ADVENTURE_SYNC_URL: options.url || 'https://sync.test', addEventListener(name,callback) { events[name]=callback; } };
   const context = {Event, AdventureMaths: require('../maths-progress.js'), window, localStorage, sessionStorage, document: { body: { dataset: { learner: child, activity: options.englishPage?'english':options.mathsPage?'maths':'' }, append() {} },
     createElement: element, getElementById: id=>created.find(item=>item.id===id)||element(),addEventListener(name,callback){events[name]=callback},visibilityState:'visible' }, location: { reload() { reloads++;reloadPositions.push(writes.length); } },
     setTimeout:(fn)=>{scheduled.push(fn);return scheduled.length},clearTimeout(){},setInterval(){}, fetch: async (url, fetchOptions) => {
@@ -246,4 +246,14 @@ test('weekly dashboard restores all practice models and preserves other subjects
  const app=await setup('jason',{},remote,{weekly:true});
  for(const [model,id] of [[T,'t'],[R,'r'],[W,'w']])assert.equal(JSON.parse(app.localStorage.getItem(model.KEY)).attempts[id].answers.Q1.initial,0);
  await app.window.adventureCloudSave();const saved=app.writes.at(-1).data;assert.equal(saved.piano,'unrelated retained');assert.equal(JSON.parse(saved.weeklyReview).attempts.w.time.Q1,5000);assert(saved.thinking);assert(saved.readingPaper1);
+});
+test('trip wish-list auto sync merges independent choices and retains removals and all subjects',async()=>{
+ const W=require('../trip-wishes.js'),local=JSON.stringify({version:1,wishes:{'trip-1':{wanted:false,at:20},'trip-2':{wanted:true,at:10}}}),remote={answers:'{}',notes:{},tripWishes:JSON.stringify({version:1,wishes:{'trip-1':{wanted:true,at:10},'trip-3':{wanted:true,at:12}}}),thinking:'keep thinking',readingPaper1:'keep English',weeklyReview:'keep reviews',piano:'keep piano'};
+ const app=await setup('jason',{[W.KEY]:local},remote,{tripWishes:true,englishPage:true,liveRemote:true});
+ const restored=W.load(app.localStorage);assert.equal(restored.wishes['trip-1'].wanted,false);assert(restored.wishes['trip-3'].wanted);
+ W.set(app.localStorage,'trip-4',true,30);app.events['adventure-trip-wishes-changed']({urgent:true});await new Promise(r=>setImmediate(r));
+ const saved=app.writes.at(-1).data;assert(JSON.parse(saved.tripWishes).wishes['trip-4'].wanted);assert.equal(JSON.parse(saved.tripWishes).wishes['trip-1'].wanted,false);for(const field of ['thinking','readingPaper1','weeklyReview','piano'])assert.equal(saved[field],remote[field]);assert(app.requests.every(r=>r.headers.Authorization==='Bearer '+token));
+});
+test('locked trip choices stay local without sending private data',async()=>{
+ const W=require('../trip-wishes.js'),app=await setup('jason',{}, {},{tripWishes:true,locked:true,englishPage:true});W.set(app.localStorage,'trip-1',true,1);app.events['adventure-trip-wishes-changed']({urgent:true});await new Promise(r=>setImmediate(r));assert.equal(app.requests.length,0);assert(W.load(app.localStorage).wishes['trip-1'].wanted);
 });

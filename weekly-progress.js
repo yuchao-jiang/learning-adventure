@@ -1,6 +1,6 @@
 (function(root){
 'use strict';
-const badges=[['🛠️','Launch Builder'],['🚀','Space Explorer'],['🌟','Star Navigator'],['🌕','Moon Explorer']];
+const badges=[['🏰','Hong Kong Explorer'],['🐳','Ocean Explorer'],['🐼','Wildlife Explorer'],['🌆','City Explorer']];
 const counts={maths:[9,9,8,9],english:[6,8,11,8],thinking:[8,8,7,7]};
 const thinkingNames=['Clue Detectives','Puzzle Explorers','Clever Connections','Final Quest'];
 // Future boosts are chosen from each week's observations before becoming playable.
