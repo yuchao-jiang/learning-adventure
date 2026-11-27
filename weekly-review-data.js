@@ -20,6 +20,22 @@
     "permission": {
       "title": "Required does not mean guaranteed",
       "text": "The school says: “Only children who return a signed permission form by Friday can join the Saturday walk.”\n\nBen returns a signed permission form by Friday."
+    },
+    "bonus-model": {
+      "title": "The model-making table",
+      "text": "Maya starts making a model at 4:00 pm and takes 12 minutes. Leo starts 5 minutes after Maya and takes 9 minutes."
+    },
+    "bonus-join": {
+      "title": "Moving the join",
+      "text": "A large rectangle is 4 cm across and 5 cm high. A small rectangle is 3 cm across and 1 cm high. In A it joins near the top; in B it joins near the bottom. In both shapes, they share a full 1 cm edge. Their areas do not overlap. The diagrams are not drawn to scale."
+    },
+    "bonus-lighthouse": {
+      "title": "The model lighthouse",
+      "text": "Arun put his model lighthouse on the classroom table. The tower stood straight, but the dried glue had left bumpy marks around the door. He had tried to rub them off at home without success.\n\nWhen two classmates walked over, Arun placed his hand over the door.\n\n“Is it ready for the display?” Mila asked.\n\n“Nearly,” Arun answered guardedly, although he had finished building it the night before.\n\nMila leaned closer to look at the tiny windows. Arun watched her face before slowly moving his hand away."
+    },
+    "bonus-picnic": {
+      "title": "The picnic bag",
+      "text": "On the morning of the school picnic, heavy clouds covered the sky. By the time Leo packed his bag, the sun had come out. He put his raincoat back in the cupboard. [Gap] At lunchtime, a shower sent the children running for shelter, and Leo was glad that his raincoat was in his bag."
     }
   },
   "questions": [
@@ -114,6 +130,74 @@
       "answer": 2,
       "skill": "Necessary condition versus guarantee",
       "explanation": "Returning the form is necessary. The statement does not say that everybody returning it will definitely attend. Ben has met that condition, but the statement alone does not guarantee he will go."
+    },
+    {
+      "id": "BM1",
+      "section": "bonus-model",
+      "subject": "Maths",
+      "activity": "Maths · Week 1 extra",
+      "text": "How many minutes after Maya finishes does Leo finish? Choose your answer, then explain how you worked it out.",
+      "options": [
+        "3",
+        "5",
+        "2",
+        "8",
+        "14"
+      ],
+      "answer": 2,
+      "skill": "Turning a story into a mathematical plan",
+      "explanation": "Maya finishes at 4:12 pm. Leo starts at 4:05 pm and finishes at 4:14 pm, which is 2 minutes later. You can also compare 5 + 9 − 12 = 2."
+    },
+    {
+      "id": "BM2",
+      "section": "bonus-join",
+      "subject": "Maths",
+      "activity": "Maths · Week 1 extra",
+      "text": "Which statement about the outside perimeters is correct? Choose your answer, then explain how you know.",
+      "options": [
+        "Both are 22 cm.",
+        "Both are 24 cm.",
+        "A is 22 cm and B is 24 cm.",
+        "A is 24 cm and B is 22 cm.",
+        "B is larger because the small rectangle is lower."
+      ],
+      "answer": 1,
+      "skill": "Shared edges without assuming a centred join",
+      "explanation": "The separate perimeters are 18 cm and 8 cm. Remove the shared 1 cm edge twice: 18 + 8 − 2 = 24 cm in both shapes. The uncovered vertical pieces together measure 5 − 1 = 4 cm; their individual lengths are not given.",
+      "image": "report-assets/review-week-1-extra-join.svg",
+      "imageAlt": "A and B each join a 3 by 1 cm rectangle to a 4 by 5 cm rectangle along a 1 cm edge. A joins near the top and B near the bottom. Not drawn to scale."
+    },
+    {
+      "id": "BE1",
+      "section": "bonus-lighthouse",
+      "subject": "English",
+      "activity": "English · Week 1 extra",
+      "text": "Why does Arun answer guardedly when Mila asks about the model?",
+      "options": [
+        "He thinks the glue is still wet.",
+        "He is worried she will notice the untidy glue marks.",
+        "He cannot remember where he put the windows.",
+        "He wants help packing the model away."
+      ],
+      "answer": 1,
+      "skill": "Inferring feelings from local actions and context",
+      "explanation": "The glue is already dry. Arun covers the door with the untidy marks and watches Mila’s face before uncovering it. These actions suggest that he is worried about her reaction to the marks."
+    },
+    {
+      "id": "BE2",
+      "section": "bonus-picnic",
+      "subject": "English",
+      "activity": "English · Week 1 extra",
+      "text": "Which sentence best fits the gap?",
+      "options": [
+        "Raincoats are often made from material that keeps water out.",
+        "He stayed home instead of going to the picnic.",
+        "His sister reminded him that the weather could change, so he packed the coat after all.",
+        "The clouds disappeared and the whole day stayed completely dry."
+      ],
+      "answer": 2,
+      "skill": "Comparing every option and connecting both sides of a gap",
+      "explanation": "The missing sentence must explain why the raincoat moves from the cupboard back into the bag. His sister’s reminder does that. A is a fact about raincoats but does not explain the change; B and D contradict what happens next."
     }
   ],
   "sets": [
@@ -139,6 +223,22 @@
       "ids": [
         "T1",
         "T2"
+      ]
+    },
+    {
+      "id": "extra-week-1-maths",
+      "name": "Optional extra · Maths · Make a plan",
+      "ids": [
+        "BM1",
+        "BM2"
+      ]
+    },
+    {
+      "id": "extra-week-1-english",
+      "name": "Optional extra · English · Look for clues",
+      "ids": [
+        "BE1",
+        "BE2"
       ]
     }
   ]
