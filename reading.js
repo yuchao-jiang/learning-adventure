@@ -1,7 +1,7 @@
 (function(root){
  'use strict';
  const config=root.ReadingPracticeConfig||{},M=config.model||ReadingProgress,D=config.data||ReadingData,activity=config.activity||'English 1 · Reading',$=id=>document.getElementById(id),question=id=>D.questions.find(q=>q.id===id);
- const activityFor=id=>config.activities?.[question(id)?.subject]||activity;
+ const activityFor=id=>question(id)?.activity||config.activities?.[question(id)?.subject]||activity;
  let state=M.load(localStorage),current=null,index=0,review=false,lastTick=Date.now(),shownPassage=null;
  for(const q of D.questions)root.AdventureHistory?.register(activityFor(q.id),String(q.id),{prompt:q.text,options:q.options,correctIndex:q.answer,context:D.sections[q.section].title+'\n\n'+D.sections[q.section].text,skill:q.skill,subject:q.subject||'English',explanation:q.explanation,image:q.image||null,paper:config.paper||'English 1',paperQuestion:q.id});
  function save(){try{localStorage.setItem(M.KEY,JSON.stringify(state));root.dispatchEvent(new Event(config.changed||'reading-progress-changed'))}catch{$('reading-cloud').textContent='Could not save here. Keep this page open.'}}
@@ -24,7 +24,7 @@
  function render(){
   const row=state.attempts[current];if(!row)return;const q=question(row.ids[index]),locked=review||row.phase==='done';
   $('set-name').textContent=setFor(row)?.name||'English 1';$('phase').textContent=locked?'Your saved work':row.phase==='check'?'Check your answers. Start with your flags.':'Read the passage and look for the best evidence.';
-  $('question-title').textContent='Question '+q.id+' · '+(index+1)+' of '+row.ids.length;$('question').textContent=q.text;passageText(q);const picture=$('question-diagram');picture.hidden=!q.image;if(q.image){picture.src=q.image;picture.alt=q.section==='graph'?'Club votes: Art 8, Music 16, Sport 24, Chess 12.':'Joined 4 by 3 cm and 2 by 1 cm rectangles sharing a 1 cm edge.'}
+  $('question-title').textContent='Question '+q.id+' · '+(index+1)+' of '+row.ids.length;$('question').textContent=q.text;passageText(q);const picture=$('question-diagram');picture.hidden=!q.image;if(q.image){picture.src=q.image;picture.alt=q.imageAlt||(q.section==='graph'?'Club votes: Art 8, Music 16, Sport 24, Chess 12.':'Joined 4 by 3 cm and 2 by 1 cm rectangles sharing a 1 cm edge.')}
   $('flag').hidden=locked;$('flag').textContent=row.flags[q.id]?.value?'⚑ Flagged for later':'⚑ Flag for later';$('flag').setAttribute('aria-pressed',!!row.flags[q.id]?.value);
   $('answers').replaceChildren();const legend=document.createElement('legend');legend.textContent='Choose your answer';$('answers').append(legend);
   q.options.forEach((option,a)=>{const label=document.createElement('label'),input=document.createElement('input');input.type='radio';input.name='answer';input.value=a;input.checked=row.answers[q.id]?.value===a;input.disabled=locked;

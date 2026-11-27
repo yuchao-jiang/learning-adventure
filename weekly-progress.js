@@ -38,5 +38,6 @@ function read(storage,models){
  return items;
  }));
 }
-const api={badges,read,summarize};root.WeeklyProgress=api;if(typeof module!=='undefined')module.exports=api;
+function extras(storage,models,week){return week===1?[{id:'extra-week-1-maths',title:'🧮 Make a plan'},{id:'extra-week-1-english',title:'📖 Look for clues'}].map(item=>({...item,optional:true,detail:'2 questions · About 5–10 minutes · No timer',state:status(models.review,storage,item.id),href:'./jason-review.html?set='+item.id})):[]}
+const api={badges,read,summarize,extras};root.WeeklyProgress=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

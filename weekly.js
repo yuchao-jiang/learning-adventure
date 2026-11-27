@@ -9,7 +9,7 @@ function card(item){
  const done=item.state==='completed',planned=item.state==='planned',a=document.createElement(planned?'div':'a');
  a.className='weekly-card'+(done?' is-complete':'');a.dataset.state=item.state;
  if(!planned)a.href=done?item.href.split('?')[0]+'?view=history':item.href;
- const state=done?(item.credited?'✓ Already finished for Week 1':'✓ Finished · Discovery revealed'):planned?'A little practice to come':item.state==='in-progress'?'In progress':'Ready when you are';
+ const state=done?(item.optional?'✓ Finished · Extra practice':item.credited?'✓ Already finished for Week 1':'✓ Finished · Discovery revealed'):planned?'A little practice to come':item.state==='in-progress'?'In progress':'Ready when you are';
  a.append(element('h3',item.title),element('p',item.detail),element('span',state,'weekly-status'),element('span',done?'See my work →':planned?'Coming after review':item.state==='in-progress'?'Keep going →':'Have a go →','weekly-action'));
  return a;
 }
@@ -42,6 +42,7 @@ function render(){
  $('weekly-caption').textContent=progress.badges[week-1]?'You earned your '+P.badges[week-1][1]+' badge. Great effort!':'New questions and short practice both count. Take it one adventure at a time.';
  $('weekly-new').replaceChildren(...items.slice(0,3).map(card));$('weekly-refresh').replaceChildren(...items.slice(3).map(card));
  $('weekly-boost-note').hidden=week===1;
+ const extras=P.extras(localStorage,{review:root.WeeklyReviewProgress},week);$('weekly-extras-section').hidden=!extras.length;$('weekly-extras').replaceChildren(...extras.map(card));
  renderDiscoveries(progress);
  celebrate(progress,newlyDone);
 }
